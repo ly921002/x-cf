@@ -1,0 +1,178 @@
+#!/bin/sh
+set -e
+
+#################################
+# 基础路径
+#################################
+BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
+WORKDIR="$BASE_DIR/x_cf"
+
+### ====== 基础变量 ======
+XRAY_PORT=${ARGO_PORT:-5216}
+UUID=${UUID:-""}
+ARGO_AUTH=${ARGO_AUTH:-"ey"}
+ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"}
+CFIP_v4=${CFIP_v4:-"cf.ljy.abrdns.com"}
+CFPORT=${CFPORT:-443}
+CFIP_v6=${CFIP_v6:-"ip.sb"}
+#################################
+# 初始化目录
+#################################
+mkdir -p "$WORKDIR"
+cd "$WORKDIR"
+
+#################################
+# 架构判断
+#################################
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)
+    XRAY_ARCH="64"
+    CF_ARCH="amd64"
+    ;;
+  aarch64|arm64)
+    XRAY_ARCH="arm64-v8a"
+    CF_ARCH="arm64"
+    ;;
+  *)
+    echo "不支持架构: $ARCH"
+    exit 1
+    ;;
+esac
+
+#################################
+# IPv6 探测
+#################################
+HAS_IPV6=0
+if ip -6 route get 2001:4860:4860::8888 >/dev/null 2>&1; then
+  HAS_IPV6=1
+fi
+
+#################################
+# 下载 Xray
+#################################
+if [ ! -f xray ]; then
+  echo "[+] 下载 Xray"
+  curl -L -o xray.zip \
+    "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-${XRAY_ARCH}.zip"
+  unzip -q xray.zip xray
+  chmod +x xray
+  rm -f xray.zip
+fi
+
+#################################
+# 生成 Xray 配置
+#################################
+# 统一监听地址：IPv6 开启则听 ::，否则听 0.0.0.0
+LISTEN_ADDR="0.0.0.0"
+[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::"
+
+cat > config.json <<EOF
+{
+  "log": { "loglevel": "none" },
+  "inbounds": [
+    {
+      "listen": "$LISTEN_ADDR",
+      "port": ${XRAY_PORT},
+      "protocol": "vmess",
+      "settings": {
+        "clients": [{ "id": "${UUID}", "alterId": 0 }]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": { "path": "/vmess-argo" }
+      }
+    }
+  ],
+  "outbounds": [{ "protocol": "freedom" }]
+}
+EOF
+
+#################################
+# 启动 Xray
+#################################
+echo "[+] 启动 Xray"
+# 杀死旧进程防止端口占用
+pkill -9 xray || true
+nohup ./xray run -c config.json > run.log 2>&1 &
+
+sleep 2
+
+#################################
+# 下载 cloudflared
+#################################
+if [ ! -f cloudflared ]; then
+  echo "[+] 下载 cloudflared"
+  curl -L -o cloudflared \
+    "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}"
+  chmod +x cloudflared
+fi
+
+#################################
+# 启动 Cloudflare Tunnel
+#################################
+DOMAIN=""
+pkill -9 cloudflared || true
+LOCAL_ADDR="localhost"
+[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
+
+# 针对纯 IPv6 环境，强制 cloudflared 使用 IPv6 模式连接 Cloudflare 边缘节点
+CF_V6_FLAG=""
+[ "$HAS_IPV6" -eq 1 ] && CF_V6_FLAG="--edge-ip-version 6"
+
+if [ -n "$ARGO_AUTH" ]; then
+  echo "[+] 使用固定 Argo 隧道"
+  nohup ./cloudflared tunnel $CF_V6_FLAG run --token "$ARGO_AUTH" \
+    >> run.log 2>&1 &
+  DOMAIN="$ARGO_DOMAIN"
+else
+  echo "[+] 使用临时 TryCloudflare 隧道"
+  nohup ./cloudflared tunnel $CF_V6_FLAG\
+    --url http://${LOCAL_ADDR}:${XRAY_PORT} \
+    > cf.log 2>&1 &
+
+  echo "[*] 等待域名生成..."
+  for i in $(seq 1 20); do
+    DOMAIN=$(grep -o 'https://.*trycloudflare.com' cf.log \
+      | head -n1 | sed 's#https://##')
+    [ -n "$DOMAIN" ] && break
+    sleep 1
+  done
+fi
+
+
+#################################
+# 输出节点信息
+#################################
+CFIP="$CFIP_v4"
+[ "$HAS_IPV6" -eq 1 ] && CFIP="$CFIP_v6"
+
+VMESS_JSON=$(cat <<EOF
+{
+  "v":"2",
+  "ps":"ARGO-VMESS",
+  "add":"${CFIP}",
+  "port":"${CFPORT}",
+  "id":"${UUID}",
+  "aid":"0",
+  "net":"ws",
+  "type":"none",
+  "host":"${DOMAIN}",
+  "path":"/vmess-argo",
+  "tls":"tls",
+  "sni":"${DOMAIN}"
+}
+EOF
+)
+
+# 编码为 vmess 链接
+VMESS_LINK="vmess://$(echo "$VMESS_JSON" | base64 | tr -d '\n')"
+
+echo
+echo "========= 节点信息 ========="
+echo "Argo 域名: $DOMAIN"
+echo "SNI: $DOMAIN"
+echo "本地 IP 类型: $( [ "$HAS_IPV6" -eq 1 ] && echo "IPv6" || echo "IPv4" )"
+echo
+echo "$VMESS_LINK"
+echo "============================"
