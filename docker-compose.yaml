@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  app:
+    image: ghcr.io/ly921002/x-cf:latest
+    container_name: x-cf
+    restart: unless-stopped
+    network_mode: host     # 使用宿主机网络
+    environment:
+      UUID: 
+      ARGO_AUTH: ey
+      ARGO_DOMAIN: domain
+      ARGO_PORT : 8001
+      CFIP_v4 : cf.ljy.abrdns.com
+      CFIP_v6 : ip.sb
+  
