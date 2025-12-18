@@ -57,7 +57,7 @@ V6=""
 
 if [ ! -f xray ]; then
   echo "[+] 下载 Xray"
-  curl $CF_V6 -L -o xray.zip \
+  curl $V6 -L -o xray.zip \
     "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-${XRAY_ARCH}.zip"
   unzip -q xray.zip xray
   chmod +x xray
@@ -111,7 +111,7 @@ sleep 1
 #################################
 if [ ! -f cloudflared ]; then
   echo "[+] 下载 cloudflared"
-  curl $CF_V6 -L -o cloudflared \
+  curl $V6 -L -o cloudflared \
     "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}"
   chmod +x cloudflared
 fi
