@@ -95,8 +95,12 @@ echo "[+] 启动 Xray"
 # 杀死旧进程防止端口占用
 pkill -9 xray || true
 nohup ./xray run -c config.json > run.log 2>&1 &
-
-sleep 2
+sleep 1
+if ! pgrep xray >/dev/null; then
+  echo "[!] Xray 启动失败"
+  exit 1
+fi
+sleep 1
 
 #################################
 # 下载 cloudflared
@@ -139,7 +143,11 @@ else
     sleep 1
   done
 fi
-
+sleep 1
+if ! pgrep cloudflared >/dev/null; then
+  echo "[!] cloudflared 启动失败"
+  exit 1
+fi
 
 #################################
 # 输出节点信息
