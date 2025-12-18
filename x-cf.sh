@@ -9,7 +9,7 @@ WORKDIR="$BASE_DIR/x_cf"
 
 ### ====== 基础变量 ======
 XRAY_PORT=${ARGO_PORT:-5216}
-UUID=${UUID:-""}
+UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
 ARGO_AUTH=${ARGO_AUTH:-"ey"}
 ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"}
 CFIP_v4=${CFIP_v4:-"cf.ljy.abrdns.com"}
