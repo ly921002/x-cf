@@ -58,7 +58,7 @@ V6=""
 if [ ! -f xray ]; then
   echo "[+] 下载 Xray"
   curl $V6 -L -o xray.zip \
-    "https://download.lycn.qzz.io/xray-${XRAY_ARCH}"
+    "https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
   unzip -q xray.zip xray
   chmod +x xray
   rm -f xray.zip
@@ -112,7 +112,7 @@ sleep 1
 if [ ! -f cloudflared ]; then
   echo "[+] 下载 cloudflared"
   curl $V6 -L -o cloudflared \
-    "https://download.lycn.qzz.io/cloudflare-${CF_ARCH}"
+    "https://download.lycn.qzz.io/cloudflare-linux-${CF_ARCH}"
   chmod +x cloudflared
 fi
 
