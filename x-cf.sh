@@ -112,7 +112,7 @@ sleep 1
 if [ ! -f cloudflared ]; then
   echo "[+] 下载 cloudflared"
   curl $V6 -L -o cloudflared \
-    "https://download.lycn.qzz.io/cloudflare-linux-${CF_ARCH}"
+    "https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
   chmod +x cloudflared
 fi
 
