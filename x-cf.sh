@@ -138,7 +138,7 @@ get_warp_config() {
 if [ ! -f xray ]; then
   echo "[+] 下载 Xray"
   download_file "https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}" "xray.zip"
-  unzip -q xray.zip xray && chmod +x xray && rm -f xray.zip
+  unzip -q xray.zip geoip.dat geosite.dat xray && chmod +x xray && rm -f xray.zip
 fi
 
 #################################
@@ -247,6 +247,11 @@ cat > config.json <<EOF
   "routing": {
     "domainStrategy": "IPIfNonMatch",
     "rules": [
+      {
+        "type": "field",
+        "domain": [ "geosite:youtube" ],
+        "outboundTag": "direct"
+      },
       {
         "type": "field",
         "ip": [ "0.0.0.0/0" ],
