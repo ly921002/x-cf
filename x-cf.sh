@@ -100,11 +100,13 @@ get_warp_config() {
 
     if echo "$warp_content" | grep -q "ygkkk"; then
         echo "[+] 在线获取成功"
+        # 提取 Private_key
+        WARP_PVK=$(echo "$warp_content" | grep 'Private_key' | sed 's/.*Private_key[:：] *//' | xargs)
+        # 提取 IPV6
+        WARP_IPV6=$(echo "$warp_content" | grep 'IPV6' | sed 's/.*IPV6[:：] *//' | xargs)
+        # 提取 reserved 数组
+        WARP_RES=$(echo "$warp_content" | grep 'reserved' | sed 's/.*reserved[:：] *//' | xargs)
 
-        # 修复解析逻辑：使用正则提取完整内容
-        WARP_PVK=$(echo "$warp_content" | grep -oP 'Private_key[:：]\s*\K.*' | xargs)
-        WARP_IPV6=$(echo "$warp_content" | grep -oP 'IPV6[:：]\s*\K.*' | xargs)
-        WARP_RES=$(echo "$warp_content" | grep -oP 'reserved[:：]\s*\K\[.*?\]' | xargs)
 
         # 如果解析失败，回退到备用值
         [ -z "$WARP_PVK" ] && WARP_PVK='52cuYFgCJXp0LAq7+nWJIbCXXgU9eGggOc+Hlfz5u6A='
@@ -249,7 +251,7 @@ cat > config.json <<EOF
     "rules": [
       {
         "type": "field",
-        "domain": ["youtube.com", "www.youtube.com", "m.youtube.com" ],
+        "domain": ["youtube.com", "www.youtube.com", "m.youtube.com", "m.youtube.com"],
         "outboundTag": "direct"
       },
       {
@@ -290,10 +292,10 @@ CF_V6_FLAG=""
 
 DOMAIN=""
 if [ -n "$ARGO_AUTH" ] && [ "$ARGO_AUTH" != "ey" ]; then
-  nohup ./cloudflared tunnel $CF_V6_FLAG run --token "$ARGO_AUTH" >> run.log 2>&1 &
+  nohup ./cloudflared tunnel $CF_V6_FLAG run --token "$ARGO_AUTH" --protocol h2 >> run.log 2>&1 &
   DOMAIN="$ARGO_DOMAIN"
 else
-  nohup ./cloudflared tunnel $CF_V6_FLAG --url http://${LOCAL_ADDR}:${XRAY_PORT} > cf.log 2>&1 &
+  nohup ./cloudflared tunnel $CF_V6_FLAG --url http://${LOCAL_ADDR}:${XRAY_PORT} --protocol h2 > cf.log 2>&1 &
   echo "[*] 等待域名生成..."
   for i in $(seq 1 20); do
     DOMAIN=$(grep -o 'https://.*trycloudflare.com' cf.log | head -n1 | sed 's#https://##')
