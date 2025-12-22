@@ -82,7 +82,7 @@ download() {
 if [ ! -f xray ]; then
   echo "[+] 下载 Xray"
   download "https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}" xray.zip
-  unzip -q xray.zip xray
+  unzip -q xray.zip xray geoip.dat geosite.dat
   chmod +x xray
   rm -f xray.zip
 fi
@@ -166,7 +166,7 @@ cat > config.json <<EOF
     "rules": [
       {
         "type": "field",
-        "domain": ["geosite:cloudflare"],
+        "domain": ["youtube.com", "*.youtube.com", "cloudflare.com", "*.cloudflare.com"],
         "outboundTag": "direct"
       },
       {
