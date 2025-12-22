@@ -10,7 +10,8 @@ services:
       UUID: 
       ARGO_AUTH: ey
       ARGO_DOMAIN: domain
-      ARGO_PORT : 8001
-      CFIP_v4 : cf.ljy.abrdns.com
-      CFIP_v6 : ip.sb
+      ARGO_PORT: 8001
+      WARP_MODE: all
+      CFIP_v4: ip.sb
+      CFIP_v6: ip.sb
   
