@@ -216,6 +216,7 @@ DOMAIN=""
 if [ -n "$ARGO_AUTH" ]; then
   nohup ./cloudflared tunnel $CF_V6_FLAG \
     --protocol http2 \
+    --edge-port 443 \
     --no-autoupdate \
     run --token "$ARGO_AUTH"  \
     > run.log 2>&1 &
@@ -223,6 +224,7 @@ if [ -n "$ARGO_AUTH" ]; then
 else
   nohup ./cloudflared tunnel $CF_V6_FLAG \
     --protocol http2 \
+    --edge-port 443 \
     --no-autoupdate \
     --url http://${LOCAL_ADDR}:${XRAY_PORT} \
     > cf.log 2>&1 &
