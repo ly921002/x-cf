@@ -10,6 +10,13 @@ set -e
 #   v6   - 仅接管 IPv6 流量，IPv4 直连
 #   off  - 关闭 WARP，全部直连
 WARP_MODE=${WARP_MODE:-"all"}
+
+# IP_PRIORITY 控制 DNS 解析优先级：
+#   UseIPv4 - 优先解析并连接 IPv4 (推荐，更稳定)
+#   UseIPv6 - 优先解析并连接 IPv6
+#   AsIs    - 默认策略，由系统和 DNS 返回结果决定
+IP_PRIORITY=${IP_PRIORITY:-"UseIPv4"}
+
 # WARP 接口地址 (参考 argosbx)
 WARP_API="https://ygkkk-warp.renky.eu.org"
 
@@ -82,28 +89,31 @@ download_file() {
 }
 
 #################################
-# 获取 WARP 账号 (参考 argosbx)
+# 获取 WARP 账号
 #################################
 get_warp_config() {
-    echo "[+] 获取 WARP 账户信息..."
-    if command -v curl >/dev/null 2>&1; then
-        warp_content=$(curl -sm5 -k "$WARP_API" 2>/dev/null)
-    else
-        warp_content=$(wget -qO- --timeout=5 "$WARP_API" 2>/dev/null)
-    fi
+    echo "[+] 正在获取 WARP 账户信息 (API: $WARP_API)..."
+    
+    CURL_OPTS="-sm 8 -k"
+    [ "$HAS_IPV4" -eq 0 ] && CURL_OPTS="$CURL_OPTS -6"
+    [ "$HAS_IPV6" -eq 0 ] && CURL_OPTS="$CURL_OPTS -4"
+
+    warp_content=$(curl $CURL_OPTS "$WARP_API" 2>/dev/null || wget -qO- --timeout=8 "$WARP_API" 2>/dev/null || echo "failed")
 
     if echo "$warp_content" | grep -q "ygkkk"; then
-        WARP_PVK=$(echo "$warp_content" | awk -F'：' '/Private_key/{print $2}' | xargs)
-        WARP_IPV6=$(echo "$warp_content" | awk -F'：' '/IPV6/{print $2}' | xargs)
-        WARP_RES=$(echo "$warp_content" | awk -F'：' '/reserved/{print $2}' | xargs)
+        echo "[+] 在线获取成功"
+        # 修复解析逻辑：使用 sed 替换掉标签和冒号，保留后续所有内容
+        WARP_PVK=$(echo "$warp_content" | grep "Private_key" | sed -E 's/.*[:：]//' | xargs)
+        WARP_IPV6=$(echo "$warp_content" | grep "IPV6" | sed -E 's/.*[:：]//' | xargs)
+        WARP_RES=$(echo "$warp_content" | grep "reserved" | sed -E 's/.*[:：]//' | xargs)
     else
-        echo "[!] 在线获取失败，使用默认 WARP 账号"
+        echo "[!] 在线获取失败，使用内置备用账号"
         WARP_IPV6='2606:4700:110:8d8d:1845:c39f:2dd5:a03a'
         WARP_PVK='52cuYFgCJXp0LAq7+nWJIbCXXgU9eGggOc+Hlfz5u6A='
         WARP_RES='[215, 69, 233]'
     fi
 
-    # 优选端点：纯 IPv6 环境必须连 IPv6 端点，否则优先连 IPv4
+    # 优选端点
     if [ "$HAS_IPV4" -eq 0 ] && [ "$HAS_IPV6" -eq 1 ]; then
         WARP_ENDPOINT="[2606:4700:d0::a29f:c001]:2408"
     else
@@ -198,7 +208,8 @@ cat > config.json <<EOF
 {
   "log": { "loglevel": "none" },
   "dns": {
-    "servers": ["8.8.8.8", "1.1.1.1"]
+    "servers": ["8.8.8.8", "1.1.1.1"],
+    "queryStrategy": "${IP_PRIORITY}"
   },
   "inbounds": [
     {
