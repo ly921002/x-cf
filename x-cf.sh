@@ -96,7 +96,7 @@ get_warp_config() {
     warp_content=$(curl $CURL_OPTS "$WARP_API" 2>/dev/null || wget -qO- --timeout=8 "$WARP_API" 2>/dev/null || echo "failed")
 
     # 调试输出，可选
-    echo "warp_content: $warp_content"
+    #echo "warp_content: $warp_content"
 
     if echo "$warp_content" | grep -q "ygkkk"; then
         echo "[+] 在线获取成功"
