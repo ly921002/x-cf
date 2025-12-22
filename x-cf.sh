@@ -11,12 +11,6 @@ set -e
 #   off  - 关闭 WARP，全部直连
 WARP_MODE=${WARP_MODE:-"all"}
 
-# IP_PRIORITY 控制 DNS 解析优先级：
-#   UseIPv4 - 优先解析并连接 IPv4 (推荐，更稳定)
-#   UseIPv6 - 优先解析并连接 IPv6
-#   AsIs    - 默认策略，由系统和 DNS 返回结果决定
-IP_PRIORITY=${IP_PRIORITY:-"UseIPv4"}
-
 # WARP 接口地址 (参考 argosbx)
 WARP_API="https://ygkkk-warp.renky.eu.org"
 
@@ -182,7 +176,7 @@ else
 fi
 
 # 2. 构建路由规则 (Routing Rules)
-# 参考 argosbx 逻辑：通过 ip 列表来匹配流量并导向 warp-out
+# 通过 ip 列表来匹配流量并导向 warp-out
 if [ "$WARP_MODE" != "off" ]; then
     case "$WARP_MODE" in
         v4)
@@ -225,8 +219,7 @@ cat > config.json <<EOF
 {
   "log": { "loglevel": "none" },
   "dns": {
-    "servers": ["8.8.8.8", "1.1.1.1"],
-    "queryStrategy": "${IP_PRIORITY}"
+    "servers": ["8.8.8.8", "1.1.1.1"]
   },
   "warp": {
     "enabled": true
