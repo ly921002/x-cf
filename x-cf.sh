@@ -93,19 +93,29 @@ download_file() {
 #################################
 get_warp_config() {
     echo "[+] 正在获取 WARP 账户信息 (API: $WARP_API)..."
-    
+
     CURL_OPTS="-sm 8 -k"
     [ "$HAS_IPV4" -eq 0 ] && CURL_OPTS="$CURL_OPTS -6"
     [ "$HAS_IPV6" -eq 0 ] && CURL_OPTS="$CURL_OPTS -4"
 
+    # 获取 WARP 内容
     warp_content=$(curl $CURL_OPTS "$WARP_API" 2>/dev/null || wget -qO- --timeout=8 "$WARP_API" 2>/dev/null || echo "failed")
+
+    # 调试输出，可选
+    echo "warp_content: $warp_content"
 
     if echo "$warp_content" | grep -q "ygkkk"; then
         echo "[+] 在线获取成功"
-        # 修复解析逻辑：使用 sed 替换掉标签和冒号，保留后续所有内容
-        WARP_PVK=$(echo "$warp_content" | grep "Private_key" | sed -E 's/.*[:：]//' | xargs)
-        WARP_IPV6=$(echo "$warp_content" | grep "IPV6" | sed -E 's/.*[:：]//' | xargs)
-        WARP_RES=$(echo "$warp_content" | grep "reserved" | sed -E 's/.*[:：]//' | xargs)
+
+        # 修复解析逻辑：使用正则提取完整内容
+        WARP_PVK=$(echo "$warp_content" | grep -oP 'Private_key[:：]\s*\K.*' | xargs)
+        WARP_IPV6=$(echo "$warp_content" | grep -oP 'IPV6[:：]\s*\K.*' | xargs)
+        WARP_RES=$(echo "$warp_content" | grep -oP 'reserved[:：]\s*\K\[.*?\]' | xargs)
+
+        # 如果解析失败，回退到备用值
+        [ -z "$WARP_PVK" ] && WARP_PVK='52cuYFgCJXp0LAq7+nWJIbCXXgU9eGggOc+Hlfz5u6A='
+        [ -z "$WARP_IPV6" ] && WARP_IPV6='2606:4700:110:8d8d:1845:c39f:2dd5:a03a'
+        [ -z "$WARP_RES" ] && WARP_RES='[215, 69, 233]'
     else
         echo "[!] 在线获取失败，使用内置备用账号"
         WARP_IPV6='2606:4700:110:8d8d:1845:c39f:2dd5:a03a'
@@ -119,7 +129,14 @@ get_warp_config() {
     else
         WARP_ENDPOINT="162.159.192.1:2408"
     fi
+
+    echo "[+] WARP 配置生成完成"
+    echo "    WARP_PVK: $WARP_PVK"
+    echo "    WARP_IPV6: $WARP_IPV6"
+    echo "    WARP_RES: $WARP_RES"
+    echo "    WARP_ENDPOINT: $WARP_ENDPOINT"
 }
+
 
 #################################
 # 部署 Xray
@@ -210,6 +227,9 @@ cat > config.json <<EOF
   "dns": {
     "servers": ["8.8.8.8", "1.1.1.1"],
     "queryStrategy": "${IP_PRIORITY}"
+  },
+  "warp": {
+    "enabled": true
   },
   "inbounds": [
     {
