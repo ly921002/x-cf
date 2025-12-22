@@ -2,12 +2,12 @@ name: Build and Push Docker Image to Docker Hub
 
 on:
   push:
-    branches: [ main ]
+    branches: [ warp ]
     paths:
       - 'Dockerfile'
       - 'x-cf.sh'
   pull_request:
-    branches: [ main ]
+    branches: [ warp ]
   workflow_dispatch:
 
 jobs:
@@ -34,4 +34,4 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/x-cf:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/x-cf-warp:latest
