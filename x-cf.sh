@@ -249,7 +249,7 @@ cat > config.json <<EOF
     "rules": [
       {
         "type": "field",
-        "domain": [ "geosite:youtube" ],
+        "domain": ["youtube.com", "www.youtube.com", "m.youtube.com", ],
         "outboundTag": "direct"
       },
       {
