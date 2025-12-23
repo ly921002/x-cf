@@ -125,7 +125,7 @@ echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
 # 生成 Xray 配置
 #################################
 LISTEN_ADDR="0.0.0.0"
-if [ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::" && echo "IPV6监听::"
+[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::" && echo "IPV6监听::"
 
 OUT_WARP=""
 RULE_V4="direct"
