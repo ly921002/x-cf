@@ -95,11 +95,11 @@ LOCAL_ADDR="127.0.0.1"
 CF_ARGS="--no-autoupdate --protocol http2"
 
 # 纯 IPv6 环境强制用 v6，否则默认 v4
-if [ "$HAS_IPV4" -eq 0 ] && [ "$HAS_IPV6" -eq 1 ]; then
-  echo "启动 Cloudflare Tunnel，纯 IPv6 环境强制用 v6"
+if [ "$HAS_IPV6" -eq 1 ]; then
+  echo "启动 Cloudflare Tunnel，IPv6 环境强制用 v6"
   CF_ARGS="$CF_ARGS --edge-ip-version 6"
 else
-  echo "启动 Cloudflare Tunnel，非纯 IPv6 环境使用默认"
+  echo "启动 Cloudflare Tunnel，非IPv6 环境使用默认"
   CF_ARGS="$CF_ARGS --edge-ip-version 4"
 fi
 
