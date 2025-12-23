@@ -126,13 +126,20 @@ RULE_V6="direct"
 if [ "$WARP_MODE" = "v4" ]; then
   WARP_ADDR='["172.16.0.2/32"]'
   WARP_ALLOWED='["0.0.0.0/0"]'
+  RULE_V4="warp-out"
+  echo "[*] WARP v4 $RULE_V4，v6 $RULE_V6"
 elif [ "$WARP_MODE" = "v6" ]; then
   WARP_ADDR='["'"$WARP_IPV6"'"/128"]'
   WARP_ALLOWED='["::/0"]'
+  RULE_V6="warp-out"
+  echo "[*] WARP v4 $RULE_V4，v6 $RULE_V6"
 else
   # all
   WARP_ADDR='["172.16.0.2/32", "'"$WARP_IPV6"'/128"]'
   WARP_ALLOWED='["0.0.0.0/0", "::/0"]'
+  RULE_V4="warp-out"
+  RULE_V6="warp-out"
+  echo "[*] WARP v4 $RULE_V4，v6 $RULE_V6"
 fi
 
 OUT_WARP='{
@@ -150,11 +157,6 @@ OUT_WARP='{
   }
 },'
 
-case "$WARP_MODE" in
-  all) RULE_V4="warp-out"; RULE_V6="warp-out" ;;
-  v4)  RULE_V4="warp-out" ;;
-  v6)  RULE_V6="warp-out" ;;
-esac
 
 cat > config.json <<EOF
 {
