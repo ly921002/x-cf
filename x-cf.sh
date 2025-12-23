@@ -222,7 +222,7 @@ fi
 pkill -9 cloudflared || true
 
 LOCAL_ADDR="127.0.0.1"
-#[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
+[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
 
 CF_ARGS="--no-autoupdate --protocol auto"
 
