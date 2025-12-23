@@ -103,10 +103,14 @@ if [ "$WARP_MODE" != "off" ]; then
   [ -z "$WARP_IPV6" ] && WARP_IPV6="2606:4700:110:8d8d:1845:c39f:2dd5:a03a"
   [ -z "$WARP_RES" ] && WARP_RES="[215, 69, 233]"
 
-  if [ "$HAS_IPV4" -eq 0 ] && [ "$HAS_IPV6" -eq 1 ]; then
+  if [ "$HAS_IPV6" -eq 1 ]; then
     WARP_ENDPOINT="[2606:4700:d0::a29f:c001]:2408"
+    WARP_ENDPOINT_IP="2606:4700:d0::a29f:c001"
+    echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
   else
     WARP_ENDPOINT="162.159.192.1:2408"
+    WARP_ENDPOINT_IP="162.159.192.1"
+    echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
   fi
 fi
 
@@ -116,9 +120,9 @@ fi
 # 逻辑说明：
 # 1. sed 's/\[//g; s/\]//g'  -> 去除 IPv6 的中括号 [ ]
 # 2. sed 's/:[0-9]*$//'      -> 去除末尾的端口号 (如 :2408)
-WARP_ENDPOINT_IP=$(echo "$WARP_ENDPOINT" | sed 's/\[//g; s/\]//g; s/:[0-9]*$//')
+# WARP_ENDPOINT_IP=$(echo "$WARP_ENDPOINT" | sed 's/\[//g; s/\]//g; s/:[0-9]*$//')
 
-echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
+# echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
 
 
 #################################
@@ -239,6 +243,7 @@ DOMAIN=""
 
 if [ -n "$ARGO_AUTH" ]; then
   nohup ./cloudflared tunnel $CF_ARGS \
+    --url http://${LOCAL_ADDR}:${XRAY_PORT} \
     run --token "$ARGO_AUTH"  \
     > run.log 2>&1 &
   echo "使用固定隧道"
