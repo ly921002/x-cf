@@ -173,7 +173,7 @@ cat > config.json <<EOF
   }],
   "outbounds": [
     $OUT_WARP
-    { "tag": "direct", "protocol": "freedom" }
+    { "tag": "direct", "protocol": "freedom", "settings": {}}
   ],
   "routing": {
     "rules": [
