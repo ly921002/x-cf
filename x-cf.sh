@@ -119,45 +119,72 @@ fi
 LISTEN_ADDR="0.0.0.0"
 [ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::" && echo "[+] IPV6监听::"
 
-OUT_WARP=""
-RULE_V4="direct"
-RULE_V6="direct"
-
-if [ "$WARP_MODE" = "v4" ]; then
-  WARP_ADDR='["172.16.0.2/32"]'
-  WARP_ALLOWED='["0.0.0.0/0"]'
-  RULE_V4="warp-out"
-  echo "[*] WARP v4 $RULE_V4，v6 $RULE_V6"
-elif [ "$WARP_MODE" = "v6" ]; then
-  WARP_ADDR='["'"$WARP_IPV6"'"/128"]'
-  WARP_ALLOWED='["::/0"]'
-  RULE_V6="warp-out"
-  echo "[*] WARP v4 $RULE_V4，v6 $RULE_V6"
+# 1. 构建 WARP 出站配置 (Outbound)
+if [ "$WARP_MODE" != "off" ]; then
+    # 这里的 allowedIPs 设为全通，具体的流量控制交给 Routing
+    WARP_OUTBOUND=$(cat <<EOF
+    {
+      "tag": "warp-out",
+      "protocol": "wireguard",
+      "settings": {
+        "secretKey": "${WARP_PVK}",
+        "address": [ "172.16.0.2/32", "${WARP_IPV6}/128" ],
+        "peers": [
+          {
+            "publicKey": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+            "allowedIPs": ["0.0.0.0/0", "::/0"],
+            "endpoint": "${WARP_ENDPOINT}"
+          }
+        ],
+        "reserved": ${WARP_RES}
+      }
+    },
+EOF
+)
 else
-  # all
-  WARP_ADDR='["172.16.0.2/32", "'"$WARP_IPV6"'/128"]'
-  WARP_ALLOWED='["0.0.0.0/0", "::/0"]'
-  RULE_V4="warp-out"
-  RULE_V6="warp-out"
-  echo "[*] WARP v4 $RULE_V4，v6 $RULE_V6"
+    WARP_OUTBOUND=""
 fi
 
-OUT_WARP='{
-  "tag": "warp-out",
-  "protocol": "wireguard",
-  "settings": {
-    "secretKey": "'"$WARP_PVK"'",
-    "address": '"$WARP_ADDR"',
-    "peers": [{
-      "publicKey": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-      "allowedIPs": '"$WARP_ALLOWED"',
-      "endpoint": "'"$WARP_ENDPOINT"'"
-    }],
-    "reserved": '"$WARP_RES"'
-  }
-},'
+# 2. 构建路由规则 (Routing Rules)
+# 参考 argosbx 逻辑：通过 ip 列表来匹配流量并导向 warp-out
+if [ "$WARP_MODE" != "off" ]; then
+    case "$WARP_MODE" in
+        v4)
+            # 只有 IPv4 地址走 WARP，IPv6 走默认(直连)
+            ROUTE_IP_LIST='"0.0.0.0/0"'
+            ;;
+        v6)
+            # 只有 IPv6 地址走 WARP，IPv4 走默认(直连)
+            ROUTE_IP_LIST='"::/0"'
+            ;;
+        all)
+            # 所有地址走 WARP
+            ROUTE_IP_LIST='"0.0.0.0/0", "::/0"'
+            ;;
+        *)
+            # 默认全走 (容错)
+            ROUTE_IP_LIST='"0.0.0.0/0", "::/0"'
+            ;;
+    esac
 
+    ROUTING_BLOCK=$(cat <<EOF
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "ip": [ ${ROUTE_IP_LIST} ],
+        "outboundTag": "warp-out"
+      }
+    ]
+  },
+EOF
+)
+else
+    ROUTING_BLOCK=""
+fi
 
+# 3. 写入最终 config.json
 cat > config.json <<EOF
 {
   "log": { "loglevel": "info" },
@@ -174,7 +201,7 @@ cat > config.json <<EOF
     }
   }],
   "outbounds": [
-    $OUT_WARP
+    ${WARP_OUTBOUND}
     { "tag": "direct", "protocol": "freedom", "settings": {}}
   ],
   "routing": {
@@ -188,12 +215,12 @@ cat > config.json <<EOF
       {
         "type": "field",
         "ip": ["0.0.0.0/0"],
-        "outboundTag": "$RULE_V4"
+        "outboundTag": "$( [ "$WARP_MODE" = "v4" ] || [ "$WARP_MODE" = "all" ] && echo "warp-out" || echo "direct" )"
       },
       {
         "type": "field",
         "ip": ["::/0"],
-        "outboundTag": "$RULE_V6"
+        "outboundTag": "$( [ "$WARP_MODE" = "v6" ] || [ "$WARP_MODE" = "all" ] && echo "warp-out" || echo "direct" )"
       }
     ]
   }
