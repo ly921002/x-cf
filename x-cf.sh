@@ -121,21 +121,30 @@ fi
 #################################
 DOMAIN=""
 pkill -9 cloudflared || true
-LOCAL_ADDR="localhost"
-[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
+LOCAL_ADDR="127.0.0.1"
+[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]" && echo "[+] IPV6 LOCAL_ADDR为[::1]"
 
-# 针对纯 IPv6 环境，强制 cloudflared 使用 IPv6 模式连接 Cloudflare 边缘节点
-CF_V6_FLAG=""
-[ "$HAS_IPV6" -eq 1 ] && CF_V6_FLAG="--edge-ip-version 6"
+CF_ARGS="--no-autoupdate --protocol auto"
+
+# 纯 IPv6 环境强制用 v6，否则默认 v4
+if [ "$HAS_IPV6" -eq 1 ]; then
+  echo "启动 Cloudflare Tunnel，IPv6 环境强制用 v6"
+  CF_ARGS="$CF_ARGS --edge-ip-version 6"
+else
+  echo "启动 Cloudflare Tunnel，非IPv6 环境使用默认"
+  CF_ARGS="$CF_ARGS --edge-ip-version 4"
+fi
 
 if [ -n "$ARGO_AUTH" ]; then
   echo "[+] 使用固定 Argo 隧道"
-  nohup ./cloudflared tunnel $CF_V6_FLAG run --token "$ARGO_AUTH" \
+  nohup ./cloudflared tunnel $CF_ARGS \
+    --url http://${LOCAL_ADDR}:${XRAY_PORT} \
+    run --token "$ARGO_AUTH" \
     >> run.log 2>&1 &
   DOMAIN="$ARGO_DOMAIN"
 else
   echo "[+] 使用临时 TryCloudflare 隧道"
-  nohup ./cloudflared tunnel $CF_V6_FLAG\
+  nohup ./cloudflared tunnel $CF_ARGS \
     --url http://${LOCAL_ADDR}:${XRAY_PORT} \
     > cf.log 2>&1 &
 
