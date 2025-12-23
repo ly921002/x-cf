@@ -233,9 +233,9 @@ fi
 pkill -9 cloudflared || true
 
 LOCAL_ADDR="127.0.0.1"
-[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
+#[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
 
-CF_ARGS="--no-autoupdate --protocol auto"
+CF_ARGS="--no-autoupdate --protocol http2"
 
 # 纯 IPv6 环境强制用 v6，否则默认 v4
 if [ "$HAS_IPV4" -eq 0 ] && [ "$HAS_IPV6" -eq 1 ]; then
@@ -255,8 +255,8 @@ else
   nohup ./cloudflared tunnel $CF_ARGS \
     --url http://${LOCAL_ADDR}:${XRAY_PORT} \
     > cf.log 2>&1 &
-  sleep 2
-  DOMAIN="$(grep trycloudflare.com cf.log | head -n1 | sed 's#https://##')"
+  sleep 10
+  DOMAIN="$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' cf.log | head -n1 | sed 's#https://##')"
 fi
 
 #################################
