@@ -149,6 +149,10 @@ esac
 cat > config.json <<EOF
 {
   "log": { "loglevel": "none" },
+  "dns": {
+    "servers": ["8.8.8.8", "1.1.1.1"],
+    "queryStrategy": "${IP_PRIORITY}"
+  },
   "inbounds": [{
     "listen": "$LISTEN_ADDR",
     "port": $XRAY_PORT,
@@ -166,8 +170,8 @@ cat > config.json <<EOF
     { "tag": "direct", "protocol": "freedom" }
   ],
   "routing": {
+    "domainStrategy": "IPIfNonMatch",
     "rules": [
-
       {
         "type": "field",
         "domain": ["youtube.com", "*.youtube.com", "cloudflare.com", "*.cloudflare.com"],
