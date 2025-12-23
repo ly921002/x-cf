@@ -105,24 +105,12 @@ if [ "$WARP_MODE" != "off" ]; then
 
   if [ "$HAS_IPV6" -eq 1 ]; then
     WARP_ENDPOINT="[2606:4700:d0::a29f:c001]:2408"
-    WARP_ENDPOINT_IP="2606:4700:d0::a29f:c001"
-    echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
+    echo "[*] WARP Endpoint: $WARP_ENDPOINT"
   else
     WARP_ENDPOINT="162.159.192.1:2408"
-    WARP_ENDPOINT_IP="162.159.192.1"
-    echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
+    echo "[*] WARP Endpoint: $WARP_ENDPOINT"
   fi
 fi
-
-# ==========================================
-# 新增逻辑：从 WARP_ENDPOINT 提取纯 IP
-# ==========================================
-# 逻辑说明：
-# 1. sed 's/\[//g; s/\]//g'  -> 去除 IPv6 的中括号 [ ]
-# 2. sed 's/:[0-9]*$//'      -> 去除末尾的端口号 (如 :2408)
-# WARP_ENDPOINT_IP=$(echo "$WARP_ENDPOINT" | sed 's/\[//g; s/\]//g; s/:[0-9]*$//')
-
-# echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
 
 
 #################################
@@ -135,22 +123,32 @@ OUT_WARP=""
 RULE_V4="direct"
 RULE_V6="direct"
 
-if [ "$WARP_MODE" != "off" ]; then
-  OUT_WARP='{
-    "tag": "warp-out",
-    "protocol": "wireguard",
-    "settings": {
-      "secretKey": "'"$WARP_PVK"'",
-      "address": ["172.16.0.2/32", "'"$WARP_IPV6"'/128"],
-      "peers": [{
-        "publicKey": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-        "allowedIPs": ["0.0.0.0/0", "::/0"],
-        "endpoint": "'"$WARP_ENDPOINT"'"
-      }],
-      "reserved": '"$WARP_RES"'
-    }
-  },'
+if [ "$WARP_MODE" = "v4" ]; then
+  WARP_ADDR='["172.16.0.2/32"]'
+  WARP_ALLOWED='["0.0.0.0/0"]'
+elif [ "$WARP_MODE" = "v6" ]; then
+  WARP_ADDR='["'"$WARP_IPV6"'"/128"]'
+  WARP_ALLOWED='["::/0"]'
+else
+  # all
+  WARP_ADDR='["172.16.0.2/32", "'"$WARP_IPV6"'/128"]'
+  WARP_ALLOWED='["0.0.0.0/0", "::/0"]'
 fi
+
+OUT_WARP='{
+  "tag": "warp-out",
+  "protocol": "wireguard",
+  "settings": {
+    "secretKey": "'"$WARP_PVK"'",
+    "address": '"$WARP_ADDR"',
+    "peers": [{
+      "publicKey": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+      "allowedIPs": '"$WARP_ALLOWED"',
+      "endpoint": "'"$WARP_ENDPOINT"'"
+    }],
+    "reserved": '"$WARP_RES"'
+  }
+},'
 
 case "$WARP_MODE" in
   all) RULE_V4="warp-out"; RULE_V6="warp-out" ;;
@@ -160,7 +158,7 @@ esac
 
 cat > config.json <<EOF
 {
-  "log": { "loglevel": "none" },
+  "log": { "loglevel": "info" },
   "inbounds": [{
     "listen": "$LISTEN_ADDR",
     "port": $XRAY_PORT,
