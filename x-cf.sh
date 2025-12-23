@@ -18,7 +18,7 @@ UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
 ARGO_AUTH=${ARGO_AUTH:-}
 ARGO_DOMAIN=${ARGO_DOMAIN:-}
 
-CFIP_v4=${CFIP_v4:-cf.ljy.abrdns.com}
+CFIP_v4=${CFIP_v4:-ip.sb}
 CFIP_v6=${CFIP_v6:-ip.sb}
 CFPORT=${CFPORT:-443}
 
@@ -110,6 +110,17 @@ if [ "$WARP_MODE" != "off" ]; then
   fi
 fi
 
+# ==========================================
+# 新增逻辑：从 WARP_ENDPOINT 提取纯 IP
+# ==========================================
+# 逻辑说明：
+# 1. sed 's/\[//g; s/\]//g'  -> 去除 IPv6 的中括号 [ ]
+# 2. sed 's/:[0-9]*$//'      -> 去除末尾的端口号 (如 :2408)
+WARP_ENDPOINT_IP=$(echo "$WARP_ENDPOINT" | sed 's/\[//g; s/\]//g; s/:[0-9]*$//')
+
+echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
+
+
 #################################
 # 生成 Xray 配置
 #################################
@@ -166,6 +177,22 @@ cat > config.json <<EOF
     "rules": [
       {
         "type": "field",
+        "ip": ["$WARP_ENDPOINT_IP"], 
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "ip": [
+          "162.159.192.0/24",
+          "162.159.193.0/24", 
+          "162.159.195.0/24",
+          "2606:4700:d0::/48",
+          "2606:4700:100::/48"
+        ],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
         "domain": ["youtube.com", "*.youtube.com", "cloudflare.com", "*.cloudflare.com"],
         "outboundTag": "direct"
       },
@@ -208,24 +235,24 @@ pkill -9 cloudflared || true
 LOCAL_ADDR="localhost"
 [ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
 
-CF_V6_FLAG=""
-[ "$HAS_IPV4" -eq 0 ] && [ "$HAS_IPV6" -eq 1 ] && CF_V6_FLAG="--edge-ip-version 6"
+CF_ARGS="--no-autoupdate --protocol auto"
+
+# 纯 IPv6 环境强制用 v6，否则默认 v4
+if [ "$HAS_IPV4" -eq 0 ] && [ "$HAS_IPV6" -eq 1 ]; then
+  CF_ARGS="$CF_ARGS --edge-ip-version 6"
+else
+  CF_ARGS="$CF_ARGS --edge-ip-version 4"
+fi
 
 DOMAIN=""
 
 if [ -n "$ARGO_AUTH" ]; then
-  nohup ./cloudflared tunnel $CF_V6_FLAG \
-    --protocol auto \
-    --edge-ip-version 4 \
-    --no-autoupdate \
+  nohup ./cloudflared tunnel $CF_ARGS \
     run --token "$ARGO_AUTH"  \
     > run.log 2>&1 &
   DOMAIN="$ARGO_DOMAIN"
 else
-  nohup ./cloudflared tunnel $CF_V6_FLAG \
-    --protocol auto \
-    --edge-ip-version 4 \
-    --no-autoupdate \
+  nohup ./cloudflared tunnel $CF_ARGS \
     --url http://${LOCAL_ADDR}:${XRAY_PORT} \
     > cf.log 2>&1 &
   sleep 2
