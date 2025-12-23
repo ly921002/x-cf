@@ -125,7 +125,7 @@ echo "[*] WARP Endpoint IP: $WARP_ENDPOINT_IP"
 # 生成 Xray 配置
 #################################
 LISTEN_ADDR="0.0.0.0"
-#[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::"
+[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::"
 
 OUT_WARP=""
 RULE_V4="direct"
@@ -224,7 +224,7 @@ pkill -9 cloudflared || true
 LOCAL_ADDR="127.0.0.1"
 #[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
 
-CF_ARGS="--no-autoupdate --protocol http2"
+CF_ARGS="--no-autoupdate --protocol auto"
 
 # 纯 IPv6 环境强制用 v6，否则默认 v4
 if [ "$HAS_IPV6" -eq 1 ]; then
