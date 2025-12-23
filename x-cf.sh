@@ -149,7 +149,7 @@ if [ "$WARP_MODE" != "off" ]; then
       }],
       "reserved": '"$WARP_RES"'
     }
-  }'
+  },'
 fi
 
 case "$WARP_MODE" in
