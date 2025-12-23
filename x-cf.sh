@@ -75,48 +75,6 @@ download() {
     wget -O "$out" "$url"
   fi
 }
-#################################
-# 下载 cloudflared
-#################################
-if [ ! -f cloudflared ]; then
-  echo "[+] 下载 cloudflared"
-  download "https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}" cloudflared
-  chmod +x cloudflared
-fi
-
-#################################
-# 启动 Cloudflare Tunnel（不走 WARP）
-#################################
-pkill -9 cloudflared || true
-
-LOCAL_ADDR="127.0.0.1"
-#[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
-
-CF_ARGS="--no-autoupdate --protocol http2"
-
-# 纯 IPv6 环境强制用 v6，否则默认 v4
-if [ "$HAS_IPV6" -eq 1 ]; then
-  echo "启动 Cloudflare Tunnel，IPv6 环境强制用 v6"
-  CF_ARGS="$CF_ARGS --edge-ip-version 6"
-else
-  echo "启动 Cloudflare Tunnel，非IPv6 环境使用默认"
-  CF_ARGS="$CF_ARGS --edge-ip-version 4"
-fi
-
-DOMAIN=""
-
-if [ -n "$ARGO_AUTH" ]; then
-  nohup ./cloudflared tunnel $CF_ARGS \
-    run --token "$ARGO_AUTH"  \
-    > run.log 2>&1 &
-  DOMAIN="$ARGO_DOMAIN"
-else
-  nohup ./cloudflared tunnel $CF_ARGS \
-    --url http://${LOCAL_ADDR}:${XRAY_PORT} \
-    > cf.log 2>&1 &
-  sleep 10
-  DOMAIN="$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' cf.log | head -n1 | sed 's#https://##')"
-fi
 
 #################################
 # 下载 Xray
@@ -137,9 +95,9 @@ if [ "$WARP_MODE" != "off" ]; then
 
   WARP_RAW="$(curl -s --max-time 8 "$WARP_API" || true)"
 
-  WARP_PVK="$(echo "$WARP_RAW" | grep 'Private_key' | sed 's/.*[:：] *//')"
-  WARP_IPV6="$(echo "$WARP_RAW" | grep 'IPV6' | sed 's/.*[:：] *//')"
-  WARP_RES="$(echo "$WARP_RAW" | grep 'reserved' | sed 's/.*[:：] *//')"
+  WARP_PVK="$(echo "$WARP_RAW" | grep 'Private_key' | sed 's/.*[：] *//')"
+  WARP_IPV6="$(echo "$WARP_RAW" | grep 'IPV6' | sed 's/.*[：] *//')"
+  WARP_RES="$(echo "$WARP_RAW" | grep 'reserved' | sed 's/.*[：] *//')"
 
   [ -z "$WARP_PVK" ] && WARP_PVK="52cuYFgCJXp0LAq7+nWJIbCXXgU9eGggOc+Hlfz5u6A="
   [ -z "$WARP_IPV6" ] && WARP_IPV6="2606:4700:110:8d8d:1845:c39f:2dd5:a03a"
@@ -247,9 +205,50 @@ EOF
 #################################
 pkill -9 xray || true
 nohup ./xray run -c config.json > run.log 2>&1 &
-sleep 1
+sleep 5
 
+#################################
+# 下载 cloudflared
+#################################
+if [ ! -f cloudflared ]; then
+  echo "[+] 下载 cloudflared"
+  download "https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}" cloudflared
+  chmod +x cloudflared
+fi
 
+#################################
+# 启动 Cloudflare Tunnel（不走 WARP）
+#################################
+pkill -9 cloudflared || true
+
+LOCAL_ADDR="127.0.0.1"
+#[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]"
+
+CF_ARGS="--no-autoupdate --protocol http2"
+
+# 纯 IPv6 环境强制用 v6，否则默认 v4
+if [ "$HAS_IPV6" -eq 1 ]; then
+  echo "启动 Cloudflare Tunnel，IPv6 环境强制用 v6"
+  CF_ARGS="$CF_ARGS --edge-ip-version 6"
+else
+  echo "启动 Cloudflare Tunnel，非IPv6 环境使用默认"
+  CF_ARGS="$CF_ARGS --edge-ip-version 4"
+fi
+
+DOMAIN=""
+
+if [ -n "$ARGO_AUTH" ]; then
+  nohup ./cloudflared tunnel $CF_ARGS \
+    run --token "$ARGO_AUTH"  \
+    > run.log 2>&1 &
+  DOMAIN="$ARGO_DOMAIN"
+else
+  nohup ./cloudflared tunnel $CF_ARGS \
+    --url http://${LOCAL_ADDR}:${XRAY_PORT} \
+    > cf.log 2>&1 &
+  sleep 10
+  DOMAIN="$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' cf.log | head -n1 | sed 's#https://##')"
+fi
 
 #################################
 # 输出节点
