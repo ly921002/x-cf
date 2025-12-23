@@ -10,7 +10,7 @@ set -e
 #   v4   - 仅 IPv4 走 WARP（推荐）
 #   v6   - 仅 IPv6 走 WARP
 #   off  - 关闭 WARP
-WARP_MODE=${WARP_MODE:-v4}
+WARP_MODE=${WARP_MODE:-all}
 
 XRAY_PORT=${ARGO_PORT:-5216}
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
