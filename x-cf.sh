@@ -207,9 +207,16 @@ EOF
 #################################
 # 启动 Xray
 #################################
+echo "[+] 启动 Xray"
+# 杀死旧进程防止端口占用
 pkill -9 xray || true
 nohup ./xray run -c config.json > run.log 2>&1 &
-sleep 5
+sleep 1
+if ! pgrep xray >/dev/null; then
+  echo "[!] Xray 启动失败"
+  exit 1
+fi
+sleep 1
 
 #################################
 # 下载 cloudflared
@@ -221,7 +228,7 @@ if [ ! -f cloudflared ]; then
 fi
 
 #################################
-# 启动 Cloudflare Tunnel（不走 WARP）
+# 启动 Cloudflare Tunnel
 #################################
 pkill -9 cloudflared || true
 
