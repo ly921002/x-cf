@@ -129,7 +129,7 @@ fi
 # 生成 Xray 配置
 #################################
 LISTEN_ADDR="0.0.0.0"
-[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::" && echo "IPV6监听::"
+[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::" && echo "[+] IPV6监听::"
 
 OUT_WARP=""
 RULE_V4="direct"
@@ -226,7 +226,7 @@ fi
 pkill -9 cloudflared || true
 
 LOCAL_ADDR="127.0.0.1"
-[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]" && echo "IPV6 LOCAL_ADDR为[::1]"
+[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]" && echo "[+] IPV6 LOCAL_ADDR为[::1]"
 
 CF_ARGS="--no-autoupdate --protocol auto"
 
@@ -246,13 +246,13 @@ if [ -n "$ARGO_AUTH" ]; then
     --url http://${LOCAL_ADDR}:${XRAY_PORT} \
     run --token "$ARGO_AUTH"  \
     > run.log 2>&1 &
-  echo "使用固定隧道"
+  echo "[+] 使用固定隧道"
   DOMAIN="$ARGO_DOMAIN"
 else
   nohup ./cloudflared tunnel $CF_ARGS \
     --url http://${LOCAL_ADDR}:${XRAY_PORT} \
     > cf.log 2>&1 &
-  echo "使用临时隧道"
+  echo "[+] 使用临时隧道"
   sleep 10
   DOMAIN="$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' cf.log | head -n1 | sed 's#https://##')"
 fi
