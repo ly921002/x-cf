@@ -149,7 +149,7 @@ if [ "$WARP_MODE" != "off" ]; then
       }],
       "reserved": '"$WARP_RES"'
     }
-  },'
+  }'
 fi
 
 case "$WARP_MODE" in
@@ -179,11 +179,7 @@ cat > config.json <<EOF
   ],
   "routing": {
     "rules": [
-      {
-        "type": "field",
-        "ip": ["$WARP_ENDPOINT_IP"], 
-        "outboundTag": "direct"
-      },
+
       {
         "type": "field",
         "domain": ["youtube.com", "*.youtube.com", "cloudflare.com", "*.cloudflare.com"],
