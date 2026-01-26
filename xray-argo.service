@@ -1,0 +1,17 @@
+[Unit]
+Description=Xray + Cloudflared Argo Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/x_cf
+ExecStart=/bin/bash /root/x-cf.sh
+Restart=always
+RestartSec=5
+LimitNOFILE=51200
+
+# 防止被 OOM 杀
+OOMScoreAdjust=-1000
+
+[Install]
+WantedBy=multi-user.target
