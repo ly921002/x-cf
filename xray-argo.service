@@ -1,17 +1,23 @@
 [Unit]
 Description=Xray + Cloudflared Argo Service
 After=network.target
+Wants=network.target
 
 [Service]
-Type=simple
-WorkingDirectory=/root/x_cf
+# x-cf.sh 是“启动器脚本”，启动完就退出
+Type=oneshot
+# 启动脚本
 ExecStart=/bin/bash /root/x-cf.sh
-Restart=always
-RestartSec=5
-LimitNOFILE=51200
+# 告诉 systemd：脚本退出 ≠ 服务结束
+RemainAfterExit=yes
+# 不要在 service stop 时杀整个 cgroup
+KillMode=process
+# systemd 自身不负责拉起子进程（由脚本负责）
+Restart=no
 
-# 防止被 OOM 杀
+# 资源保护（防止被 OOM）
 OOMScoreAdjust=-1000
+LimitNOFILE=51200
 
 [Install]
 WantedBy=multi-user.target
