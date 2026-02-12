@@ -69,7 +69,7 @@ fi
 #################################
 # 统一监听地址：IPv6 开启则听 ::，否则听 0.0.0.0
 LISTEN_ADDR="127.0.0.1"
-[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::1"
+[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR_V6="::1"
 
 
 cat > config.json <<EOF
@@ -78,6 +78,18 @@ cat > config.json <<EOF
   "inbounds": [
     {
       "listen": "$LISTEN_ADDR",
+      "port": ${XRAY_PORT},
+      "protocol": "vmess",
+      "settings": {
+        "clients": [{ "id": "${UUID}", "alterId": 0 }]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": { "path": "/vmess-argo" }
+      }
+    },
+    {
+      "listen": "$LISTEN_ADDR_V6",
       "port": ${XRAY_PORT},
       "protocol": "vmess",
       "settings": {
@@ -103,6 +115,10 @@ pkill -f "$WORKDIR/xray run" || true
 nohup ./xray run -c config.json > run.log 2>&1 &
 sleep 1
 if ! pgrep xray >/dev/null; then
+  if ! ss -lnt | grep -q ":${XRAY_PORT}"; then
+    echo "[!] Xray 未监听端口 ${XRAY_PORT}"
+    exit 1
+  fi
   echo "[!] Xray 启动失败"
   exit 1
 fi
