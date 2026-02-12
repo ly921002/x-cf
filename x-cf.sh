@@ -116,8 +116,8 @@ fi
 #################################
 # 生成 Xray 配置
 #################################
-LISTEN_ADDR="0.0.0.0"
-[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::" && echo "[+] IPV6监听::"
+LISTEN_ADDR="127.0.0.1"
+[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::1" && echo "[+] IPV6监听::"
 
 OUT_WARP=""
 RULE_V4="direct"
