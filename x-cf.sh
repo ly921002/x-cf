@@ -68,8 +68,9 @@ fi
 # 生成 Xray 配置
 #################################
 # 统一监听地址：IPv6 开启则听 ::，否则听 0.0.0.0
-LISTEN_ADDR="0.0.0.0"
-[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::"
+LISTEN_ADDR="127.0.0.1"
+[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR="::1"
+
 
 cat > config.json <<EOF
 {
@@ -97,7 +98,8 @@ EOF
 #################################
 echo "[+] 启动 Xray"
 # 杀死旧进程防止端口占用
-pkill -9 xray || true
+pkill -f "$WORKDIR/xray run" || true
+
 nohup ./xray run -c config.json > run.log 2>&1 &
 sleep 1
 if ! pgrep xray >/dev/null; then
@@ -120,7 +122,8 @@ fi
 # 启动 Cloudflare Tunnel
 #################################
 DOMAIN=""
-pkill -9 cloudflared || true
+pkill -f "$WORKDIR/cloudflared tunnel" || true
+
 LOCAL_ADDR="127.0.0.1"
 [ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]" && echo "[+] IPV6 LOCAL_ADDR为[::1]"
 
