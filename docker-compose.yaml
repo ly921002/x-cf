@@ -13,6 +13,7 @@ services:
       ARGO_PORT: 8001
       CFIP_v4: ip.sb
       CFIP_v6: ip.sb
+      IP_v6: false
     logging:
       driver: "json-file"
       options:
