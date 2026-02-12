@@ -15,6 +15,7 @@ ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"}
 CFIP_v4=${CFIP_v4:-"ip.sb"}
 CFPORT=${CFPORT:-443}
 CFIP_v6=${CFIP_v6:-"ip.sb"}
+IP_v6=${IP_v6:-"false"}
 #################################
 # 初始化目录
 #################################
@@ -68,9 +69,11 @@ fi
 # 生成 Xray 配置
 #################################
 # 统一监听地址：IPv6 开启则听 ::，否则听 0.0.0.0
-LISTEN_ADDR="127.0.0.1"
-[ "$HAS_IPV6" -eq 1 ] && LISTEN_ADDR_V6="::1"
-
+if [ "$IP_v6" = "true" ]; then
+  LISTEN_ADDR="::1"
+else
+  LISTEN_ADDR="127.0.0.1"
+fi
 
 cat > config.json <<EOF
 {
@@ -78,18 +81,6 @@ cat > config.json <<EOF
   "inbounds": [
     {
       "listen": "$LISTEN_ADDR",
-      "port": ${XRAY_PORT},
-      "protocol": "vmess",
-      "settings": {
-        "clients": [{ "id": "${UUID}", "alterId": 0 }]
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": { "path": "/vmess-argo" }
-      }
-    },
-    {
-      "listen": "$LISTEN_ADDR_V6",
       "port": ${XRAY_PORT},
       "protocol": "vmess",
       "settings": {
@@ -140,19 +131,15 @@ fi
 DOMAIN=""
 pkill -f "$WORKDIR/cloudflared tunnel" || true
 
-LOCAL_ADDR="127.0.0.1"
-[ "$HAS_IPV6" -eq 1 ] && LOCAL_ADDR="[::1]" && echo "[+] IPV6 LOCAL_ADDR为[::1]"
-
-CF_ARGS="--no-autoupdate --protocol auto"
-
-# 纯 IPv6 环境强制用 v6，否则默认 v4
-if [ "$HAS_IPV6" -eq 1 ]; then
-  echo "启动 Cloudflare Tunnel，IPv6 环境强制用 v6"
-  CF_ARGS="$CF_ARGS --edge-ip-version 6"
+if [ "$IP_v6" = "true" ]; then
+  LOCAL_ADDR="[::1]"
+  EDGE_IP_VERSION="6"
 else
-  echo "启动 Cloudflare Tunnel，非IPv6 环境使用默认"
-  CF_ARGS="$CF_ARGS --edge-ip-version 4"
+  LOCAL_ADDR="127.0.0.1"
+  EDGE_IP_VERSION="4"
 fi
+
+CF_ARGS="--no-autoupdate --protocol auto --edge-ip-version ${EDGE_IP_VERSION}"
 
 if [ -n "$ARGO_AUTH" ]; then
   echo "[+] 使用固定 Argo 隧道"
