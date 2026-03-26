@@ -26,6 +26,7 @@ cd "$WORKDIR"
 # 架构判断
 #################################
 ARCH=$(uname -m)
+echo "识别架构: $ARCH"
 case "$ARCH" in
   x86_64)
     XRAY_ARCH="64"
@@ -58,6 +59,7 @@ V6=""
 
 if [ ! -f xray ]; then
   echo "[+] 下载 Xray"
+  echo "下载地址: https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
   curl $V6 -L -o xray.zip \
     "https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
   unzip -q xray.zip xray
@@ -120,6 +122,7 @@ sleep 1
 #################################
 if [ ! -f cloudflared ]; then
   echo "[+] 下载 cloudflared"
+  echo "下载地址: https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
   curl $V6 -L -o cloudflared \
     "https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
   chmod +x cloudflared
