@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   app:
-    image: ghcr.io/ly921002/x-cf:latest
+    image: ghcr.io/ly921002/x-cf:SOCKS5
     container_name: x-cf
     restart: unless-stopped
     network_mode: host     # 使用宿主机网络
@@ -12,8 +12,10 @@ services:
       ARGO_DOMAIN: domain
       ARGO_PORT: 8001
       CFIP_v4: ip.sb
-      CFIP_v6: ip.sb
-      IP_v6: false
+      SOCKS_IP: 你的代理IP
+      SOCKS_PORT: 端口
+      SOCKS_USER: 账号
+      SOCKS_PASS: 密码
     logging:
       driver: "json-file"
       options:
