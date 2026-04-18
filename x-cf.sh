@@ -1,66 +1,44 @@
 #!/bin/sh
 set -e
 
-#################################
-# 基础路径
-#################################
 BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKDIR="$BASE_DIR/x_cf"
 
-### ====== 基础变量 ======
+### ===== 基础变量 =====
 XRAY_PORT=${ARGO_PORT:-5216}
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
-ARGO_AUTH=${ARGO_AUTH:-"ey"}
-ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"}
+
+ARGO_AUTH=${ARGO_AUTH:-""}
+ARGO_DOMAIN=${ARGO_DOMAIN:-""}
+
 CFIP_v4=${CFIP_v4:-"ip.sb"}
 CFPORT=${CFPORT:-443}
-CFIP_v6=${CFIP_v6:-"ip.sb"}
-IP_v6=${IP_v6:-"false"}
-#################################
-# 初始化目录
-#################################
+
+### ===== SOCKS5 出口 =====
+SOCKS_IP=${SOCKS_IP:-"1.2.3.4"}
+SOCKS_PORT=${SOCKS_PORT:-1080}
+SOCKS_USER=${SOCKS_USER:-"user"}
+SOCKS_PASS=${SOCKS_PASS:-"password"}
+
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
 #################################
-# 架构判断
+# 架构
 #################################
 ARCH=$(uname -m)
-echo "识别架构: $ARCH"
 case "$ARCH" in
-  x86_64)
-    XRAY_ARCH="64"
-    CF_ARCH="amd64"
-    ;;
-  aarch64|arm64)
-    XRAY_ARCH="arm64-v8a"
-    CF_ARCH="arm64"
-    ;;
-  *)
-    echo "不支持架构: $ARCH"
-    exit 1
-    ;;
+  x86_64) XRAY_ARCH="64"; CF_ARCH="amd64";;
+  aarch64|arm64) XRAY_ARCH="arm64-v8a"; CF_ARCH="arm64";;
+  *) echo "不支持架构"; exit 1;;
 esac
-
-#################################
-# IPv6 探测
-#################################
-HAS_IPV6=0
-if ip -6 route get 2001:4860:4860::8888 >/dev/null 2>&1; then
-  HAS_IPV6=1
-fi
 
 #################################
 # 下载 Xray
 #################################
-# 针对纯 IPv6 环境，强制 使用 IPv6 下载
-V6=""
-[ "$HAS_IPV6" -eq 1 ] && V6="-6"
-
 if [ ! -f xray ]; then
   echo "[+] 下载 Xray"
-  echo "下载地址: https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
-  curl $V6 -L -o xray.zip \
+  curl -L -o xray.zip \
     "https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
   unzip -q xray.zip xray
   chmod +x xray
@@ -68,21 +46,15 @@ if [ ! -f xray ]; then
 fi
 
 #################################
-# 生成 Xray 配置
+# 写配置（核心：SOCKS 出口）
 #################################
-# 统一监听地址：IPv6 开启则听 ::，否则听 0.0.0.0
-if [ "$IP_v6" = "true" ]; then
-  LISTEN_ADDR="::1"
-else
-  LISTEN_ADDR="127.0.0.1"
-fi
-
 cat > config.json <<EOF
 {
-  "log": { "loglevel": "none" },
+  "log": { "loglevel": "warning" },
+
   "inbounds": [
     {
-      "listen": "$LISTEN_ADDR",
+      "listen": "127.0.0.1",
       "port": ${XRAY_PORT},
       "protocol": "vmess",
       "settings": {
@@ -94,94 +66,98 @@ cat > config.json <<EOF
       }
     }
   ],
-  "outbounds": [{ "protocol": "freedom" }]
+
+  "outbounds": [
+    {
+      "tag": "socks-out",
+      "protocol": "socks",
+      "settings": {
+        "servers": [
+          {
+            "address": "${SOCKS_IP}",
+            "port": ${SOCKS_PORT},
+            "users": [
+              {
+                "user": "${SOCKS_USER}",
+                "pass": "${SOCKS_PASS}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    }
+  ],
+
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "socks-out",
+        "network": "tcp"
+      }
+    ]
+  }
 }
 EOF
 
 #################################
 # 启动 Xray
 #################################
-echo "[+] 启动 Xray"
-# 杀死旧进程防止端口占用
-pkill -f "$WORKDIR/xray run" || true
-
+pkill -f "$WORKDIR/xray" || true
 nohup ./xray run -c config.json > run.log 2>&1 &
-sleep 1
-if ! pgrep xray >/dev/null; then
-  if ! ss -lnt | grep -q ":${XRAY_PORT}"; then
-    echo "[!] Xray 未监听端口 ${XRAY_PORT}"
-    exit 1
-  fi
-  echo "[!] Xray 启动失败"
-  exit 1
-fi
-sleep 1
+
+sleep 2
+pgrep xray >/dev/null || { echo "Xray 启动失败"; exit 1; }
 
 #################################
 # 下载 cloudflared
 #################################
 if [ ! -f cloudflared ]; then
   echo "[+] 下载 cloudflared"
-  echo "下载地址: https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
-  curl $V6 -L -o cloudflared \
+  curl -L -o cloudflared \
     "https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
   chmod +x cloudflared
 fi
 
 #################################
-# 启动 Cloudflare Tunnel
+# 启动 Argo
 #################################
-DOMAIN=""
-pkill -f "$WORKDIR/cloudflared tunnel" || true
-
-if [ "$IP_v6" = "true" ]; then
-  LOCAL_ADDR="[::1]"
-  EDGE_IP_VERSION="6"
-else
-  LOCAL_ADDR="127.0.0.1"
-  EDGE_IP_VERSION="4"
-fi
-
-CF_ARGS="--no-autoupdate --protocol auto --edge-ip-version ${EDGE_IP_VERSION}"
+pkill -f cloudflared || true
 
 if [ -n "$ARGO_AUTH" ]; then
-  echo "[+] 使用固定 Argo 隧道"
-  nohup ./cloudflared tunnel $CF_ARGS \
-    --url http://${LOCAL_ADDR}:${XRAY_PORT} \
+  echo "[+] 固定隧道"
+  nohup ./cloudflared tunnel \
+    --no-autoupdate \
+    --url http://127.0.0.1:${XRAY_PORT} \
     run --token "$ARGO_AUTH" \
-    >> run.log 2>&1 &
+    > argo.log 2>&1 &
   DOMAIN="$ARGO_DOMAIN"
 else
-  echo "[+] 使用临时 TryCloudflare 隧道"
-  nohup ./cloudflared tunnel $CF_ARGS \
-    --url http://${LOCAL_ADDR}:${XRAY_PORT} \
-    > cf.log 2>&1 &
+  echo "[+] 临时隧道"
+  nohup ./cloudflared tunnel \
+    --url http://127.0.0.1:${XRAY_PORT} \
+    > argo.log 2>&1 &
 
-  echo "[*] 等待域名生成..."
   for i in $(seq 1 20); do
-    DOMAIN=$(grep -o 'https://.*trycloudflare.com' cf.log \
+    DOMAIN=$(grep -o 'https://.*trycloudflare.com' argo.log \
       | head -n1 | sed 's#https://##')
     [ -n "$DOMAIN" ] && break
     sleep 1
   done
 fi
-sleep 1
-if ! pgrep cloudflared >/dev/null; then
-  echo "[!] cloudflared 启动失败"
-  exit 1
-fi
 
 #################################
-# 输出节点信息
+# 输出 vmess
 #################################
-CFIP="$CFIP_v4"
-[ "$HAS_IPV6" -eq 1 ] && CFIP="$CFIP_v6"
-
 VMESS_JSON=$(cat <<EOF
 {
   "v":"2",
-  "ps":"ARGO-VMESS",
-  "add":"${CFIP}",
+  "ps":"ARGO-SOCKS",
+  "add":"${CFIP_v4}",
   "port":"${CFPORT}",
   "id":"${UUID}",
   "aid":"0",
@@ -195,14 +171,14 @@ VMESS_JSON=$(cat <<EOF
 EOF
 )
 
-# 编码为 vmess 链接
 VMESS_LINK="vmess://$(echo "$VMESS_JSON" | base64 | tr -d '\n')"
 
 echo
-echo "========= 节点信息 ========="
-echo "Argo 域名: $DOMAIN"
-echo "SNI: $DOMAIN"
-echo "本地 IP 类型: $( [ "$HAS_IPV6" -eq 1 ] && echo "IPv6" || echo "IPv4" )"
+echo "========= 成功 ========="
+echo "Argo域名: $DOMAIN"
 echo
 echo "$VMESS_LINK"
-echo "============================"
+echo
+echo "出口 SOCKS5:"
+echo "${SOCKS_USER}:${SOCKS_PASS}@${SOCKS_IP}:${SOCKS_PORT}"
+echo "======================="
