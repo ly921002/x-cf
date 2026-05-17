@@ -12,9 +12,8 @@ XRAY_PORT=${ARGO_PORT:-5216}
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
 ARGO_AUTH=${ARGO_AUTH:-"ey"}
 ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"}
-CFIP_v4=${CFIP_v4:-"ip.sb"}
+CFIP=${CFIP:-"ip.sb"}
 CFPORT=${CFPORT:-443}
-CFIP_v6=${CFIP_v6:-"ip.sb"}
 IP_v6=${IP_v6:-"false"}
 #################################
 # 初始化目录
@@ -60,7 +59,7 @@ V6=""
 if [ ! -f xray ]; then
   echo "[+] 下载 Xray"
   echo "下载地址: https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
-  curl $V6 -L -o xray.zip \
+  curl $V6 || curl -4 -L -o xray.zip \
     "https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
   unzip -q xray.zip xray
   chmod +x xray
@@ -123,7 +122,7 @@ sleep 1
 if [ ! -f cloudflared ]; then
   echo "[+] 下载 cloudflared"
   echo "下载地址: https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
-  curl $V6 -L -o cloudflared \
+  curl $V6 || curl -4 -L -o cloudflared \
     "https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
   chmod +x cloudflared
 fi
@@ -174,8 +173,7 @@ fi
 #################################
 # 输出节点信息
 #################################
-CFIP="$CFIP_v4"
-[ "$HAS_IPV6" -eq 1 ] && CFIP="$CFIP_v6"
+CFIP="$CFIP"
 
 VMESS_JSON=$(cat <<EOF
 {
