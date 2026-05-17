@@ -11,8 +11,7 @@ services:
       ARGO_AUTH: ey
       ARGO_DOMAIN: domain
       ARGO_PORT: 8001
-      CFIP_v4: ip.sb
-      CFIP_v6: ip.sb
+      CFIP: ip.sb
       IP_v6: false
     logging:
       driver: "json-file"
