@@ -12,9 +12,3 @@ services:
       ARGO_DOMAIN: domain
       ARGO_PORT: 8001
       CFIP: ip.sb
-      IP_v6: false
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
