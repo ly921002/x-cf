@@ -101,11 +101,7 @@ pkill -f "$WORKDIR/xray run" || true
 nohup ./xray run -c config.json > run.log 2>&1 &
 sleep 1
 if ! pgrep xray >/dev/null; then
-  if ! ss -lnt | grep -q ":${XRAY_PORT}"; then
-    echo "[!] Xray 未监听端口 ${XRAY_PORT}"
-    exit 1
-  fi
-  echo "[!] Xray 启动失败"
+  echo "[!] Xray 未监听端口 ${XRAY_PORT}"
   echo "====== 错误日志 ======"
   cat run.log
   exit 1
