@@ -60,9 +60,9 @@ fi
 
 cat > config.json <<EOF
 {
-  "log": [
+  "log": {
     "loglevel": "warning"
-  ],
+  },
   "inbounds": [
     {
       "listen": "127.0.0.1",
@@ -71,7 +71,7 @@ cat > config.json <<EOF
       "settings": {
         "clients": [
           {
-            "id": "UUID"
+            "id": "${UUID}"
           }
         ],
         "decryption": "none"
@@ -80,7 +80,7 @@ cat > config.json <<EOF
         "network": "ws",
         "security": "none",
         "wsSettings": {
-          "path": "/vless"
+          "path": "/live"
         }
       }
     }
