@@ -101,7 +101,7 @@ pkill -f "$WORKDIR/xray run" || true
 nohup ./xray run -c config.json > run.log 2>&1 &
 sleep 1
 if ! pgrep xray >/dev/null; then
-  echo "[!] Xray 未监听端口 ${XRAY_PORT}"
+  echo "[!] Xray 启动失败"
   echo "====== 错误日志 ======"
   cat run.log
   exit 1
@@ -131,6 +131,8 @@ DOMAIN="$ARGO_DOMAIN"
 sleep 1
 if ! pgrep cloudflared >/dev/null; then
   echo "[!] cloudflared 启动失败"
+  echo "====== 错误日志 ======"
+  cat run.log
   exit 1
 fi
 
