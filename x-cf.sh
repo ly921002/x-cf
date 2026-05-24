@@ -14,7 +14,6 @@ ARGO_AUTH=${ARGO_AUTH:-""}
 ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"}
 CFIP=${CFIP:-"ip.sb"}
 CFPORT=${CFPORT:-443}
-IP_v6=${IP_v6:-"false"}
 #################################
 # 初始化目录
 #################################
@@ -42,24 +41,13 @@ case "$ARCH" in
 esac
 
 #################################
-# IPv6 探测
-#################################
-HAS_IPV6=0
-if ip -6 route get 2001:4860:4860::8888 >/dev/null 2>&1; then
-  HAS_IPV6=1
-fi
-
-#################################
 # 下载 Xray
 #################################
-# 针对纯 IPv6 环境，强制 使用 IPv6 下载
-V6=""
-[ "$HAS_IPV6" -eq 1 ] && V6="-6"
 
 if [ ! -f xray ]; then
   echo "[+] 下载 Xray"
   echo "下载地址: https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
-  curl $V6 || curl -4 -L -o xray.zip \
+  curl -L -o xray.zip \
     "https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
   unzip -q xray.zip xray
   chmod +x xray
@@ -70,30 +58,28 @@ fi
 # 生成 Xray 配置
 #################################
 # 统一监听地址：IPv6 开启则听 ::，否则听 0.0.0.0
-if [ "$IP_v6" = "true" ]; then
-  LISTEN_ADDR="::1"
-else
-  LISTEN_ADDR="127.0.0.1"
-fi
+LISTEN_ADDR="127.0.0.1"
 
 cat > config.json <<EOF
 {
-  "log": { "loglevel": "none" },
-  "inbounds": [
-    {
-      "listen": "$LISTEN_ADDR",
-      "port": ${XRAY_PORT},
-      "protocol": "vmess",
-      "settings": {
-        "clients": [{ "id": "${UUID}", "alterId": 0 }]
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": { "path": "/vmess-argo" }
+  "listen": "$LISTEN_ADDR",
+  "port": ${XRAY_PORT},
+  "protocol": "vless",
+  "settings": {
+    "clients": [
+      {
+        "id": "${UUID}"
       }
+    ],
+    "decryption": "none"
+  },
+  "streamSettings": {
+    "network": "ws",
+    "security": "none",
+    "wsSettings": {
+      "path": "/live"
     }
-  ],
-  "outbounds": [{ "protocol": "freedom" }]
+  }
 }
 EOF
 
@@ -122,7 +108,7 @@ sleep 1
 if [ ! -f cloudflared ]; then
   echo "[+] 下载 cloudflared"
   echo "下载地址: https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
-  curl $V6 || curl -4 -L -o cloudflared \
+  curl -4 -L -o cloudflared \
     "https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
   chmod +x cloudflared
 fi
@@ -132,38 +118,16 @@ fi
 #################################
 DOMAIN=""
 pkill -f "$WORKDIR/cloudflared tunnel" || true
-
-if [ "$IP_v6" = "true" ]; then
-  LOCAL_ADDR="[::1]"
-  EDGE_IP_VERSION="6"
-else
-  LOCAL_ADDR="127.0.0.1"
-  EDGE_IP_VERSION="4"
-fi
-
+LOCAL_ADDR="127.0.0.1"
+EDGE_IP_VERSION="4"
 CF_ARGS="--no-autoupdate --protocol auto --edge-ip-version ${EDGE_IP_VERSION}"
+echo "[+] 使用固定 Argo 隧道"
+nohup ./cloudflared tunnel $CF_ARGS \
+  --url http://${LOCAL_ADDR}:${XRAY_PORT} \
+  run --token "$ARGO_AUTH" \
+  >> run.log 2>&1 &
+DOMAIN="$ARGO_DOMAIN"
 
-if [ -n "$ARGO_AUTH" ]; then
-  echo "[+] 使用固定 Argo 隧道"
-  nohup ./cloudflared tunnel $CF_ARGS \
-    --url http://${LOCAL_ADDR}:${XRAY_PORT} \
-    run --token "$ARGO_AUTH" \
-    >> run.log 2>&1 &
-  DOMAIN="$ARGO_DOMAIN"
-else
-  echo "[+] 使用临时 TryCloudflare 隧道"
-  nohup ./cloudflared tunnel $CF_ARGS \
-    --url http://${LOCAL_ADDR}:${XRAY_PORT} \
-    > cf.log 2>&1 &
-
-  echo "[*] 等待域名生成..."
-  for i in $(seq 1 20); do
-    DOMAIN=$(grep -o 'https://.*trycloudflare.com' cf.log \
-      | head -n1 | sed 's#https://##')
-    [ -n "$DOMAIN" ] && break
-    sleep 1
-  done
-fi
 sleep 1
 if ! pgrep cloudflared >/dev/null; then
   echo "[!] cloudflared 启动失败"
@@ -174,33 +138,12 @@ fi
 # 输出节点信息
 #################################
 CFIP="$CFIP"
-
-VMESS_JSON=$(cat <<EOF
-{
-  "v":"2",
-  "ps":"ARGO-VMESS",
-  "add":"${CFIP}",
-  "port":"${CFPORT}",
-  "id":"${UUID}",
-  "aid":"0",
-  "net":"ws",
-  "type":"none",
-  "host":"${DOMAIN}",
-  "path":"/vmess-argo",
-  "tls":"tls",
-  "sni":"${DOMAIN}"
-}
-EOF
-)
-
-# 编码为 vmess 链接
-VMESS_LINK="vmess://$(echo "$VMESS_JSON" | base64 | tr -d '\n')"
+VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=ws&host=${DOMAIN}&path=%2Fvless&sni=${DOMAIN}#ARGO-VLESS"
 
 echo
 echo "========= 节点信息 ========="
 echo "Argo 域名: $DOMAIN"
 echo "SNI: $DOMAIN"
-echo "本地 IP 类型: $( [ "$HAS_IPV6" -eq 1 ] && echo "IPv6" || echo "IPv4" )"
 echo
-echo "$VMESS_LINK"
+echo "$VLESS_LINK"
 echo "============================"
