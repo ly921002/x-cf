@@ -57,29 +57,37 @@ fi
 #################################
 # 生成 Xray 配置
 #################################
-# 统一监听地址：IPv6 开启则听 ::，否则听 0.0.0.0
-LISTEN_ADDR="127.0.0.1"
 
 cat > config.json <<EOF
 {
-  "listen": "$LISTEN_ADDR",
-  "port": ${XRAY_PORT},
-  "protocol": "vless",
-  "settings": {
-    "clients": [
-      {
-        "id": "${UUID}"
+  "log": [
+    "loglevel": "warning"
+  ],
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": ${XRAY_PORT},
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "UUID"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/vless"
+        }
       }
-    ],
-    "decryption": "none"
-  },
-  "streamSettings": {
-    "network": "ws",
-    "security": "none",
-    "wsSettings": {
-      "path": "/live"
     }
-  }
+  ],
+  "outbounds": [
+    { "protocol": "freedom" }
+  ]
 }
 EOF
 
@@ -118,13 +126,7 @@ fi
 #################################
 DOMAIN=""
 pkill -f "$WORKDIR/cloudflared tunnel" || true
-LOCAL_ADDR="127.0.0.1"
-EDGE_IP_VERSION="4"
-CF_ARGS="--no-autoupdate --protocol auto --edge-ip-version ${EDGE_IP_VERSION}"
-echo "[+] 使用固定 Argo 隧道"
-nohup ./cloudflared tunnel $CF_ARGS \
-  --url http://${LOCAL_ADDR}:${XRAY_PORT} \
-  run --token "$ARGO_AUTH" \
+nohup ./cloudflared tunnel run --token "$ARGO_AUTH" \
   >> run.log 2>&1 &
 DOMAIN="$ARGO_DOMAIN"
 
@@ -137,7 +139,6 @@ fi
 #################################
 # 输出节点信息
 #################################
-CFIP="$CFIP"
 VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=ws&host=${DOMAIN}&path=%2Fvless&sni=${DOMAIN}#ARGO-VLESS"
 
 echo
