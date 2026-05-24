@@ -106,6 +106,8 @@ if ! pgrep xray >/dev/null; then
     exit 1
   fi
   echo "[!] Xray 启动失败"
+  echo "====== 错误日志 ======"
+  cat run.log
   exit 1
 fi
 sleep 1
