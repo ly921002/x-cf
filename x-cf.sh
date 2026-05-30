@@ -8,15 +8,17 @@ BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKDIR="$BASE_DIR/x_cf"
 
 ### ====== 基础变量 ======
-XRAY_PORT=${ARGO_PORT:-8001}
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
-ARGO_AUTH=${ARGO_AUTH:-"ey"}
-ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"}
-CFIP=${CFIP:-"www.visa.cn"}
-CFPORT=${CFPORT:-443}
+XRAY_PORT=${ARGO_PORT:-8001} #隧道端口
+ARGO_AUTH=${ARGO_AUTH:-"ey"} #隧道TOKEN
+ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"} #隧道域名
+CFIP=${CFIP:-"www.visa.cn"} #优选域名
+CFPORT=${CFPORT:-443} #优选端口
 
 PATH_LENGTH=${PATH_LENGTH:-8} #随机路径长度
-WS_PATH=${WS_PATH:-"/$(tr -dc 'a-zA-Z0-9' </dev/urandom | head -c "$PATH_LENGTH")"}
+RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$PATH_LENGTH") #随机路径
+BASE=${BASE:-"api/v1"} #固定路径api/v1,api/v2,api/user,api/data#live,stream
+WS_PATH=${WS_PATH:-"/${BASE}/${RAND}"}
 #################################
 # 初始化目录
 #################################
