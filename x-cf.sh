@@ -103,12 +103,12 @@ echo "[+] 启动 Xray"
 # 杀死旧进程防止端口占用
 pkill -f "$WORKDIR/xray run" || true
 
-nohup ./xray run -c config.json > xray.log 2>&1 &
+nohup ./xray run -c config.json > run.log 2>&1 &
 sleep 1
 if ! pgrep xray >/dev/null; then
   echo "[!] Xray 启动失败"
   echo "====== 错误日志 ======"
-  cat xray.log
+  cat run.log
   exit 1
 fi
 sleep 1
@@ -130,14 +130,14 @@ fi
 DOMAIN=""
 pkill -f "$WORKDIR/cloudflared tunnel" || true
 nohup ./cloudflared tunnel run --token "$ARGO_AUTH" \
-  >> cloudflared.log 2>&1 &
+  >> run.log 2>&1 &
 DOMAIN="$ARGO_DOMAIN"
 
 sleep 1
 if ! pgrep cloudflared >/dev/null; then
   echo "[!] cloudflared 启动失败"
   echo "====== 错误日志 ======"
-  cat cloudflared.log
+  cat run.log
   exit 1
 fi
 
