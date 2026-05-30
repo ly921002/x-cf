@@ -7,8 +7,10 @@ services:
     restart: unless-stopped
     network_mode: host     # 使用宿主机网络
     environment:
-      UUID: 
+      UUID: xxxx
       ARGO_AUTH: ey
       ARGO_DOMAIN: domain
       ARGO_PORT: 8001
-      CFIP: ip.sb
+      CFIP: www.visa.cn
+      PATH_LENGTH: 8  #随机路径长度
+      WS_PATH: /api
