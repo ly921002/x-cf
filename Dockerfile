@@ -25,4 +25,4 @@ ENV ARGO_AUTH=""
 ENV ARGO_DOMAIN=""
 
 # 启动命令
-CMD ./x-cf.sh && tail -f /app/x_cf/run.log
+CMD ./x-cf.sh && tail -f /app/x_cf/xray.log /app/x_cf/cloudflared.log
