@@ -10,10 +10,13 @@ WORKDIR="$BASE_DIR/x_cf"
 ### ====== 基础变量 ======
 XRAY_PORT=${ARGO_PORT:-5216}
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
-ARGO_AUTH=${ARGO_AUTH:-""}
+ARGO_AUTH=${ARGO_AUTH:-"ey"}
 ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"}
-CFIP=${CFIP:-"ip.sb"}
+CFIP=${CFIP:-"www.visa.cn"}
 CFPORT=${CFPORT:-443}
+
+PATH_LENGTH=${PATH_LENGTH:-8} #随机路径长度
+WS_PATH=${WS_PATH:-"/$(tr -dc 'a-zA-Z0-9' </dev/urandom | head -c "$PATH_LENGTH")"}
 #################################
 # 初始化目录
 #################################
@@ -80,7 +83,7 @@ cat > config.json <<EOF
         "network": "ws",
         "security": "none",
         "wsSettings": {
-          "path": "/live"
+          "path": "${WS_PATH}"
         }
       }
     }
@@ -103,7 +106,7 @@ sleep 1
 if ! pgrep xray >/dev/null; then
   echo "[!] Xray 启动失败"
   echo "====== 错误日志 ======"
-  cat run.log
+  cat xray.log
   exit 1
 fi
 sleep 1
@@ -125,7 +128,7 @@ fi
 DOMAIN=""
 pkill -f "$WORKDIR/cloudflared tunnel" || true
 nohup ./cloudflared tunnel run --token "$ARGO_AUTH" \
-  >> run.log 2>&1 &
+  >> cloudflared.log 2>&1 &
 DOMAIN="$ARGO_DOMAIN"
 
 sleep 1
@@ -139,12 +142,13 @@ fi
 #################################
 # 输出节点信息
 #################################
-VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=ws&host=${DOMAIN}&path=%2Fvless&sni=${DOMAIN}#ARGO-VLESS"
+ENCODED_PATH=$(printf '%s' "$WS_PATH" | sed 's/\//%2F/g')
+VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=ws&host=${DOMAIN}&path=${ENCODED_PATH}&sni=${DOMAIN}#VLESS-ARGO"
 
 echo
 echo "========= 节点信息 ========="
 echo "Argo 域名: $DOMAIN"
 echo "SNI: $DOMAIN"
-echo
+echo "WS_PATH: ${ENCODED_PATH}"
 echo "$VLESS_LINK"
 echo "============================"
