@@ -103,7 +103,7 @@ echo "[+] 启动 Xray"
 # 杀死旧进程防止端口占用
 pkill -f "$WORKDIR/xray run" || true
 
-nohup ./xray run -c config.json > run.log 2>&1 &
+nohup ./xray run -c config.json > xray.log 2>&1 &
 sleep 1
 if ! pgrep xray >/dev/null; then
   echo "[!] Xray 启动失败"
@@ -137,7 +137,7 @@ sleep 1
 if ! pgrep cloudflared >/dev/null; then
   echo "[!] cloudflared 启动失败"
   echo "====== 错误日志 ======"
-  cat run.log
+  cat cloudflared.log
   exit 1
 fi
 
