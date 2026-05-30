@@ -149,6 +149,7 @@ VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=
 
 echo
 echo "========= 节点信息 ========="
+echo "UUID: $UUID"
 echo "Argo 域名: $DOMAIN"
 echo "SNI: $DOMAIN"
 echo "WS_PATH: ${ENCODED_PATH}"
