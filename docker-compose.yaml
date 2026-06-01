@@ -11,4 +11,7 @@ services:
       ARGO_AUTH: ey
       ARGO_DOMAIN: domain
       ARGO_PORT: 8001
+      BASE: api/v1
       PATH_LENGTH: 8  #随机路径长度
+      CFIP: www.visa.cn #优选域名
+      CFPORT: 443 #优选端口
