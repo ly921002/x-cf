@@ -128,7 +128,6 @@ fi
 #################################
 # 启动 Cloudflare Tunnel
 #################################
-=""
 pkill -f "$WORKDIR/cloudflared tunnel" || true
 nohup ./cloudflared tunnel run --token "$ARGO_AUTH" \
   >> run.log 2>&1 &
