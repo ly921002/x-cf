@@ -11,7 +11,7 @@ WORKDIR="$BASE_DIR/x_cf"
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
 XRAY_PORT=${ARGO_PORT:-8001} #隧道端口
 ARGO_AUTH=${ARGO_AUTH:-"ey"} #隧道TOKEN
-ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"} #隧道域名
+ARGO_DOMAIN=${ARGO_DOMAIN:-""} #隧道域名
 CFIP=${CFIP:-"www.visa.cn"} #优选域名
 CFPORT=${CFPORT:-443} #优选端口
 
@@ -86,9 +86,7 @@ cat > config.json <<EOF
         "security": "none",
         "xhttpSettings": {
           "path": "${XHTTP_PATH}",
-          "mode": "auto",
-          "scMaxEachPostBytes": 1000000,
-          "noSSEHeader": false
+          "mode": "auto"
         }
       }
     }
@@ -130,7 +128,7 @@ fi
 #################################
 # 启动 Cloudflare Tunnel
 #################################
-DOMAIN=""
+=""
 pkill -f "$WORKDIR/cloudflared tunnel" || true
 nohup ./cloudflared tunnel run --token "$ARGO_AUTH" \
   >> run.log 2>&1 &
