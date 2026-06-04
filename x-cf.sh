@@ -18,7 +18,7 @@ CFPORT=${CFPORT:-443} #优选端口
 PATH_LENGTH=${PATH_LENGTH:-8} #随机路径长度
 RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$PATH_LENGTH") #随机路径
 BASE=${BASE:-"api/v1"} #固定路径api/v1,api/v2,api/user,api/data#live,stream
-WS_PATH=${WS_PATH:-"/${BASE}/${RAND}"}
+XHTTP_PATH=${XHTTP_PATH:-"/${BASE}/${RAND}"}
 #################################
 # 初始化目录
 #################################
@@ -82,10 +82,13 @@ cat > config.json <<EOF
         "decryption": "none"
       },
       "streamSettings": {
-        "network": "ws",
+        "network": "xhttp",
         "security": "none",
-        "wsSettings": {
-          "path": "${WS_PATH}"
+        "xhttpSettings": {
+          "path": "${XHTTP_PATH}",
+          "mode": "auto",
+          "scMaxEachPostBytes": 1000000,
+          "noSSEHeader": false
         }
       }
     }
@@ -144,14 +147,15 @@ fi
 #################################
 # 输出节点信息
 #################################
-ENCODED_PATH=$(printf '%s' "$WS_PATH" | sed 's/\//%2F/g')
-VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=ws&host=${DOMAIN}&path=${ENCODED_PATH}&sni=${DOMAIN}#VLESS-ARGO"
+ENCODED_PATH=$(printf '%s' "$XHTTP_PATH" | sed 's/\//%2F/g')
+
+VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=xhttp&path=${ENCODED_PATH}&host=${DOMAIN}&sni=${DOMAIN}#VLESS-XHTTP-ARGO"
 
 echo
 echo "========= 节点信息 ========="
 echo "UUID: $UUID"
 echo "Argo 域名: $DOMAIN"
 echo "SNI: $DOMAIN"
-echo "WS_PATH: ${ENCODED_PATH}"
+echo "XHTTP_PATH: ${ENCODED_PATH}"
 echo "$VLESS_LINK"
 echo "============================"
