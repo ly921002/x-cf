@@ -2,16 +2,13 @@ version: "3.8"
 
 services:
   app:
-    image: ghcr.io/ly921002/x-cf:latest
+    image: ghcr.io/ly921002/x-cf:reality
     container_name: x-cf
     restart: unless-stopped
     network_mode: host     # 使用宿主机网络
     environment:
       UUID: xxxx
-      ARGO_AUTH: ey
-      ARGO_DOMAIN: domain
-      ARGO_PORT: 8001
+      XRAY_PORT: 443
       BASE: api/v1
       PATH_LENGTH: 8  #随机路径长度
-      CFIP: www.visa.cn #优选域名
-      CFPORT: 443 #优选端口
+
