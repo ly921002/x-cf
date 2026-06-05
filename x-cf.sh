@@ -67,23 +67,14 @@ fi
 #################################
 
 echo "[+] 生成Reality密钥"
-KEY_OUTPUT=$("./xray" x25519 2>/dev/null)
 
-if [ -z "$KEY_OUTPUT" ]; then
-    echo "[!] Xray x25519 生成密钥失败，检查二进制权限或依赖"
-    exit 1
-fi
+KEY_OUTPUT=$(./xray x25519 2>/dev/null)
 
-PRIVATE_KEY=$(echo "$KEY_OUTPUT" | grep "Private key" | awk '{print $3}')
-PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep "Public key" | awk '{print $3}')
+echo "$KEY_OUTPUT"
 
-if [ -z "$PRIVATE_KEY" ] || [ -z "$PUBLIC_KEY" ]; then
-    echo "[!] 提取 Reality 密钥失败"
-    echo "$KEY_OUTPUT"
-    exit 1
-fi
-
-SHORT_ID=$(head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n')
+PRIVATE_KEY=$(echo "$KEY_OUTPUT" | grep -i "PrivateKey" | head -n1 | awk '{print $2}')
+PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep -i "Password" | head -n1 | awk '{print $3}')
+SHORT_ID=$(echo "$KEY_OUTPUT" | grep -i "Hash32" | head -n1 | awk '{print $2}' | cut -c1-16)
 
 #################################
 # Reality伪装站
