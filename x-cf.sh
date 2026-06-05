@@ -13,7 +13,7 @@ WORKDIR="$BASE_DIR/xray"
 
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
 
-XRAY_PORT=${XRAY_PORT:-443}
+XRAY_PORT=${XRAY_PORT:-8443}
 
 PATH_LENGTH=${PATH_LENGTH:-8}
 RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$PATH_LENGTH")
@@ -47,18 +47,17 @@ aarch64|arm64)
     ;;
 esac
 echo "架构识别: $ARCH"
+
 #################################
 # 下载Xray
 #################################
 
 if [ ! -f xray ]; then
     echo "[+] 下载Xray"
-
     curl -L -o xray.zip \
     "https://github.com/XTLS/Xray-core/releases/latest/download/xray-linux-${XRAY_ARCH}.zip"
     unzip -q xray.zip xray
     chmod +x xray
-
     rm -f xray.zip
 fi
 
@@ -70,21 +69,18 @@ echo "[+] 生成Reality密钥"
 
 KEY_OUTPUT=$(./xray x25519 2>/dev/null)
 
-echo "$KEY_OUTPUT"
-
 PRIVATE_KEY=$(echo "$KEY_OUTPUT" | grep -i "PrivateKey" | head -n1 | awk '{print $2}')
 PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep -i "Password" | head -n1 | awk '{print $3}')
-SHORT_ID=$(echo "$KEY_OUTPUT" | grep -i "Hash32" | head -n1 | awk '{print $2}' | cut -c1-16)
 
 # 兜底（防止解析失败）
 if [ -z "$PRIVATE_KEY" ]; then
     PRIVATE_KEY=$(echo "$KEY_OUTPUT" | awk -F': ' '/PrivateKey/ {print $2}')
 fi
-
 if [ -z "$PUBLIC_KEY" ]; then
     PUBLIC_KEY=$(echo "$KEY_OUTPUT" | awk -F': ' '/Password/ {print $2}')
 fi
 
+# 随机生成一个 16 字符的 ShortID
 SHORT_ID=$(head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n')
 
 if [ -z "$PRIVATE_KEY" ] || [ -z "$PUBLIC_KEY" ]; then
@@ -107,14 +103,13 @@ www.nvidia.com
 "
 
 SERVER_NAME=$(echo "$REALITY_SITES" | sed '/^$/d' | shuf -n1)
-
 DEST="${SERVER_NAME}:443"
 
 #################################
 # 获取公网IP
 #################################
 
-SERVER_IP=$(curl -s4 ip.sb)
+SERVER_IP=$(curl -s4 ip.sb || echo "无法获取IP")
 
 #################################
 # 生成配置
@@ -169,26 +164,7 @@ cat > config.json <<EOF
 EOF
 
 #################################
-# 启动Xray
-#################################
-
-echo "[+] 启动Xray"
-
-pkill -f "$WORKDIR/xray run" 2>/dev/null || true
-
-nohup ./xray run -c config.json > run.log 2>&1 &
-
-sleep 3
-
-if ! pgrep -x xray >/dev/null; then
-    echo "[!] Xray启动失败"
-    echo
-    cat run.log
-    exit 1
-fi
-
-#################################
-# 输出节点
+# 输出节点 (在启动前打印，防止被日志淹没或退出)
 #################################
 
 ENCODED_PATH=$(printf '%s' "$XHTTP_PATH" | sed 's/\//%2F/g')
@@ -211,3 +187,12 @@ echo
 echo "$VLESS_LINK"
 echo
 echo "===================================="
+
+#################################
+# 启动Xray (前台运行，接管进程)
+#################################
+
+echo "[+] 启动Xray进程中..."
+
+# 使用 exec 替换当前进程，让 Xray 在前台持续运行。容器将保持存活直到 Xray 停止。
+exec ./xray run -c config.json
