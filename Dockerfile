@@ -19,10 +19,5 @@ COPY x-cf.sh .
 # 赋予脚本执行权限
 RUN chmod +x x-cf.sh
 
-# 设置环境变量默认值（可在 docker run 时覆盖）
-ENV UUID=""
-ENV ARGO_AUTH=""
-ENV ARGO_DOMAIN=""
-
 # 启动命令
 CMD ./x-cf.sh && tail -f /app/x_cf/run.log
