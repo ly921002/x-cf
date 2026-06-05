@@ -5,62 +5,103 @@ set -e
 # 基础路径
 #################################
 BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
-WORKDIR="$BASE_DIR/x_cf"
+WORKDIR="$BASE_DIR/xray"
 
-### ====== 基础变量 ======
+#################################
+# 基础变量
+#################################
+
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
-XRAY_PORT=${ARGO_PORT:-8001} #隧道端口
-ARGO_AUTH=${ARGO_AUTH:-"ey"} #隧道TOKEN
-ARGO_DOMAIN=${ARGO_DOMAIN:-""} #隧道域名
-CFIP=${CFIP:-"www.visa.cn"} #优选域名
-CFPORT=${CFPORT:-443} #优选端口
 
-PATH_LENGTH=${PATH_LENGTH:-8} #随机路径长度
-RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$PATH_LENGTH") #随机路径
-BASE=${BASE:-"api/v1"} #固定路径api/v1,api/v2,api/user,api/data#live,stream
+XRAY_PORT=${XRAY_PORT:-443}
+
+PATH_LENGTH=${PATH_LENGTH:-8}
+RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$PATH_LENGTH")
+
+BASE=${BASE:-"api/v1"}
 XHTTP_PATH=${XHTTP_PATH:-"/${BASE}/${RAND}"}
+
 #################################
 # 初始化目录
 #################################
+
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
 #################################
-# 架构判断
+# 架构识别
 #################################
+
 ARCH=$(uname -m)
-echo "识别架构: $ARCH"
+
 case "$ARCH" in
-  x86_64)
+x86_64)
     XRAY_ARCH="64"
-    CF_ARCH="amd64"
     ;;
-  aarch64|arm64)
+aarch64|arm64)
     XRAY_ARCH="arm64-v8a"
-    CF_ARCH="arm64"
     ;;
-  *)
+*)
     echo "不支持架构: $ARCH"
     exit 1
     ;;
 esac
 
 #################################
-# 下载 Xray
+# 下载Xray
 #################################
 
 if [ ! -f xray ]; then
-  echo "[+] 下载 Xray"
-  echo "下载地址: https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
-  curl -L -o xray.zip \
+    echo "[+] 下载Xray"
+
+    curl -L -o xray.zip \
     "https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
-  unzip -q xray.zip xray
-  chmod +x xray
-  rm -f xray.zip
+
+    unzip -q xray.zip xray
+    chmod +x xray
+
+    rm -f xray.zip
 fi
 
 #################################
-# 生成 Xray 配置
+# 生成Reality密钥
+#################################
+
+echo "[+] 生成Reality密钥"
+
+KEY_OUTPUT=$(./xray x25519)
+
+PRIVATE_KEY=$(echo "$KEY_OUTPUT" | grep "Private key" | awk '{print $3}')
+PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep "Public key" | awk '{print $3}')
+
+SHORT_ID=$(openssl rand -hex 8)
+
+#################################
+# Reality伪装站
+#################################
+
+REALITY_SITES="
+www.microsoft.com
+www.apple.com
+www.cloudflare.com
+www.amazon.com
+www.oracle.com
+www.visa.com
+www.nvidia.com
+"
+
+SERVER_NAME=$(echo "$REALITY_SITES" | sed '/^$/d' | shuf -n1)
+
+DEST="${SERVER_NAME}:443"
+
+#################################
+# 获取公网IP
+#################################
+
+SERVER_IP=$(curl -s4 ip.sb)
+
+#################################
+# 生成配置
 #################################
 
 cat > config.json <<EOF
@@ -70,7 +111,7 @@ cat > config.json <<EOF
   },
   "inbounds": [
     {
-      "listen": "127.0.0.1",
+      "listen": "0.0.0.0",
       "port": ${XRAY_PORT},
       "protocol": "vless",
       "settings": {
@@ -83,7 +124,19 @@ cat > config.json <<EOF
       },
       "streamSettings": {
         "network": "xhttp",
-        "security": "none",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "${DEST}",
+          "xver": 0,
+          "serverNames": [
+            "${SERVER_NAME}"
+          ],
+          "privateKey": "${PRIVATE_KEY}",
+          "shortIds": [
+            "${SHORT_ID}"
+          ]
+        },
         "xhttpSettings": {
           "path": "${XHTTP_PATH}",
           "mode": "auto"
@@ -92,67 +145,53 @@ cat > config.json <<EOF
     }
   ],
   "outbounds": [
-    { "protocol": "freedom" }
+    {
+      "protocol": "freedom"
+    }
   ]
 }
 EOF
 
 #################################
-# 启动 Xray
+# 启动Xray
 #################################
-echo "[+] 启动 Xray"
-# 杀死旧进程防止端口占用
-pkill -f "$WORKDIR/xray run" || true
+
+echo "[+] 启动Xray"
+
+pkill -f "$WORKDIR/xray run" 2>/dev/null || true
 
 nohup ./xray run -c config.json > run.log 2>&1 &
-sleep 1
-if ! pgrep xray >/dev/null; then
-  echo "[!] Xray 启动失败"
-  echo "====== 错误日志 ======"
-  cat run.log
-  exit 1
-fi
-sleep 1
 
-#################################
-# 下载 cloudflared
-#################################
-if [ ! -f cloudflared ]; then
-  echo "[+] 下载 cloudflared"
-  echo "下载地址: https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
-  curl -4 -L -o cloudflared \
-    "https://download.lycn.qzz.io/cloudflared-linux-${CF_ARCH}"
-  chmod +x cloudflared
+sleep 3
+
+if ! pgrep -x xray >/dev/null; then
+    echo "[!] Xray启动失败"
+    echo
+    cat run.log
+    exit 1
 fi
 
 #################################
-# 启动 Cloudflare Tunnel
+# 输出节点
 #################################
-pkill -f "$WORKDIR/cloudflared tunnel" || true
-nohup ./cloudflared tunnel run --token "$ARGO_AUTH" \
-  >> run.log 2>&1 &
-DOMAIN="$ARGO_DOMAIN"
 
-sleep 1
-if ! pgrep cloudflared >/dev/null; then
-  echo "[!] cloudflared 启动失败"
-  echo "====== 错误日志 ======"
-  cat run.log
-  exit 1
-fi
-
-#################################
-# 输出节点信息
-#################################
 ENCODED_PATH=$(printf '%s' "$XHTTP_PATH" | sed 's/\//%2F/g')
 
-VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=xhttp&path=${ENCODED_PATH}&host=${DOMAIN}&sni=${DOMAIN}#VLESS-XHTTP-ARGO"
+VLESS_LINK="vless://${UUID}@${SERVER_IP}:${XRAY_PORT}?encryption=none&security=reality&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&sni=${SERVER_NAME}&fp=chrome&type=xhttp&path=${ENCODED_PATH}#VLESS-XHTTP-REALITY"
 
 echo
-echo "========= 节点信息 ========="
-echo "UUID: $UUID"
-echo "Argo 域名: $DOMAIN"
-echo "SNI: $DOMAIN"
-echo "XHTTP_PATH: ${ENCODED_PATH}"
+echo "===================================="
+echo "          VLESS + XHTTP + REALITY"
+echo "===================================="
+echo
+echo "IP        : $SERVER_IP"
+echo "PORT      : $XRAY_PORT"
+echo "UUID      : $UUID"
+echo "SNI       : $SERVER_NAME"
+echo "PublicKey : $PUBLIC_KEY"
+echo "ShortID   : $SHORT_ID"
+echo "Path      : $XHTTP_PATH"
+echo
 echo "$VLESS_LINK"
-echo "============================"
+echo
+echo "===================================="
