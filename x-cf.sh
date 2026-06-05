@@ -76,6 +76,22 @@ PRIVATE_KEY=$(echo "$KEY_OUTPUT" | grep -i "PrivateKey" | head -n1 | awk '{print
 PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep -i "Password" | head -n1 | awk '{print $3}')
 SHORT_ID=$(echo "$KEY_OUTPUT" | grep -i "Hash32" | head -n1 | awk '{print $2}' | cut -c1-16)
 
+# 兜底（防止解析失败）
+if [ -z "$PRIVATE_KEY" ]; then
+    PRIVATE_KEY=$(echo "$KEY_OUTPUT" | awk -F': ' '/PrivateKey/ {print $2}')
+fi
+
+if [ -z "$PUBLIC_KEY" ]; then
+    PUBLIC_KEY=$(echo "$KEY_OUTPUT" | awk -F': ' '/Password/ {print $2}')
+fi
+
+SHORT_ID=$(head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n')
+
+if [ -z "$PRIVATE_KEY" ] || [ -z "$PUBLIC_KEY" ]; then
+    echo "[!] Reality密钥解析失败"
+    exit 1
+fi
+
 #################################
 # Reality伪装站
 #################################
