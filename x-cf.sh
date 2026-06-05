@@ -55,7 +55,6 @@ if [ ! -f xray ]; then
     echo "[+] 下载Xray"
 
     curl -L -o xray.zip \
-    #"https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
     "https://github.com/XTLS/Xray-core/releases/latest/download/xray-linux-${XRAY_ARCH}.zip"
     unzip -q xray.zip xray
     chmod +x xray
