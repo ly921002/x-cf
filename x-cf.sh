@@ -74,7 +74,7 @@ KEY_OUTPUT=$(./xray x25519)
 PRIVATE_KEY=$(echo "$KEY_OUTPUT" | grep "Private key" | awk '{print $3}')
 PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep "Public key" | awk '{print $3}')
 
-SHORT_ID=$(openssl rand -hex 8)
+SHORT_ID=$(head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n')
 
 #################################
 # Reality伪装站
