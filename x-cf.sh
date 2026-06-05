@@ -67,11 +67,21 @@ fi
 #################################
 
 echo "[+] 生成Reality密钥"
+KEY_OUTPUT=$("./xray" x25519 2>/dev/null)
 
-KEY_OUTPUT=$(./xray x25519)
+if [ -z "$KEY_OUTPUT" ]; then
+    echo "[!] Xray x25519 生成密钥失败，检查二进制权限或依赖"
+    exit 1
+fi
 
 PRIVATE_KEY=$(echo "$KEY_OUTPUT" | grep "Private key" | awk '{print $3}')
 PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep "Public key" | awk '{print $3}')
+
+if [ -z "$PRIVATE_KEY" ] || [ -z "$PUBLIC_KEY" ]; then
+    echo "[!] 提取 Reality 密钥失败"
+    echo "$KEY_OUTPUT"
+    exit 1
+fi
 
 SHORT_ID=$(head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n')
 
