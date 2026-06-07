@@ -91,12 +91,7 @@ cat > config.json <<EOF
         "security": "none",
         "xhttpSettings": {
           "path": "${XHTTP_PATH}",
-          "mode": "auto",
-          "scMaxBufferedPosts": 30,
-          "scMaxEachPostBytes": 1000000,
-          "scMinPostsIntervalMs": 60,
-          "scStreamUpServerSecs": "30-80",
-          "xPaddingBytes": "100-1000"
+          "mode": "auto"
         }
       }
     }
