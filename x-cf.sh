@@ -15,10 +15,15 @@ ARGO_DOMAIN=${ARGO_DOMAIN:-""} #隧道域名
 CFIP=${CFIP:-"www.visa.cn"} #优选域名
 CFPORT=${CFPORT:-443} #优选端口
 
-PATH_LENGTH=${PATH_LENGTH:-8} #随机路径长度
-RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$PATH_LENGTH") #随机路径
-BASE=${BASE:-"api/v1"} #固定路径api/v1,api/v2,api/user,api/data#live,stream
-XHTTP_PATH=${XHTTP_PATH:-"/${BASE}/${RAND}"}
+PATH_LENGTH=${PATH_LENGTH:-8} # 随机路径长度
+BASE=${BASE:-"/api/v1"}     # 固定路径
+
+if [ "$PATH_LENGTH" -gt 0 ]; then
+  RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$PATH_LENGTH")
+  XHTTP_PATH="${BASE}/${RAND}"
+else
+  XHTTP_PATH="${BASE}"
+fi
 #################################
 # 初始化目录
 #################################
