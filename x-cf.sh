@@ -67,7 +67,7 @@ cat > config.json <<EOF
   "log": { "loglevel": "warning" },
   "inbounds": [
     {
-      "listen": "127.0.0.1",
+      "listen": "0.0.0.0",
       "port": ${XRAY_PORT},
       "protocol": "vless",
       "settings": {
