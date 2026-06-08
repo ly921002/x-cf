@@ -83,7 +83,7 @@ cat > config.json <<EOF
           "certificates": [
             {
               "certificateFile": "/cert/cert.pem",
-              "keyFile": "/cert/key.pem"
+              "keyFile": "/cert/key.key"
             }
           ]
         },
