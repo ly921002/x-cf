@@ -9,7 +9,7 @@ services:
     environment:
       UUID: xxxx
       XRAY_PORT: 8001
-      XHTTP_PATH_BASE: api/v1
+      XHTTP_PATH_BASE: /api/v1
       XHTTP_PATH_LEN: 8  #随机路径长度
       CFIP: www.visa.cn #优选域名
       CFPORT: 443 #优选端口
