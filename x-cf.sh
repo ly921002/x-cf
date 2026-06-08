@@ -85,6 +85,7 @@ cat > config.json <<EOF
               "certificateFile": "/app/x_cf/cert.pem",
               "keyFile": "/app/x_cf/key.pem"
             }
+          ]
         },
         "xhttpSettings": {
           "path": "${XHTTP_PATH}",
