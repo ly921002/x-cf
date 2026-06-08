@@ -79,7 +79,12 @@ cat > config.json <<EOF
         "security": "tls",
         "tlsSettings": {
           "serverName": "${CFIP}",
-          "allowInsecure": false
+          "allowInsecure": false,
+          "certificates": [
+            {
+              "certificateFile": "/app/x_cf/cert.pem",
+              "keyFile": "/app/x_cf/key.pem"
+            }
         },
         "xhttpSettings": {
           "path": "${XHTTP_PATH}",
