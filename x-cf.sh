@@ -82,8 +82,8 @@ cat > config.json <<EOF
           "allowInsecure": false,
           "certificates": [
             {
-              "certificateFile": "/app/x_cf/cert.pem",
-              "keyFile": "/app/x_cf/key.pem"
+              "certificateFile": "/cert/cert.pem",
+              "keyFile": "/cert/key.pem"
             }
           ]
         },
