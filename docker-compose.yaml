@@ -8,9 +8,7 @@ services:
     network_mode: host     # 使用宿主机网络
     environment:
       UUID: xxxx
-      ARGO_AUTH: ey
-      ARGO_DOMAIN: domain
-      ARGO_PORT: 8001
+      XRAY_PORT: 8001
       XHTTP_PATH_BASE: api/v1
       XHTTP_PATH_LEN: 8  #随机路径长度
       CFIP: www.visa.cn #优选域名
