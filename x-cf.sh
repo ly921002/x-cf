@@ -9,9 +9,8 @@ WORKDIR="$BASE_DIR/x_cf"
 
 ### ====== 基础变量 ======
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
-XRAY_PORT=${XRAY_PORT:-8001}  # 本地 Xray 监听端口
-CFIP=${CFIP:-"www.visa.cn"}  # CDN 域名
-CFPORT=${CFPORT:-443}         # CDN 端口
+PORT=${PORT:-8001}  # 本地 Xray 监听端口
+DOMAIN=${DOMAIN:-"domain"}  # CDN 域名
 
 XHTTP_PATH_LEN=${XHTTP_PATH_LEN:-8} # 随机路径长度
 XHTTP_PATH_BASE=${XHTTP_PATH_BASE:-"/api/v1"} # 固定路径
@@ -68,7 +67,7 @@ cat > config.json <<EOF
   "inbounds": [
     {
       "listen": "0.0.0.0",
-      "port": ${XRAY_PORT},
+      "port": ${PORT},
       "protocol": "vless",
       "settings": {
         "clients": [{ "id": "${UUID}" }],
@@ -78,7 +77,7 @@ cat > config.json <<EOF
         "network": "xhttp",
         "security": "tls",
         "tlsSettings": {
-          "serverName": "${CFIP}",
+          "serverName": "${DOMAIN}",
           "allowInsecure": false,
           "certificates": [
             {
@@ -117,13 +116,13 @@ fi
 #################################
 ENCODED_PATH=$(printf '%s' "$XHTTP_PATH" | sed 's/\//%2F/g')
 
-VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=xhttp&path=${ENCODED_PATH}&host=${CFIP}&sni=${CFIP}#VLESS-XHTTP-CDN"
+VLESS_LINK="vless://${UUID}@${DOMAIN}:${PORT}?encryption=none&security=tls&type=xhttp&path=${ENCODED_PATH}&host=${DOMAIN}&sni=${DOMAIN}#VLESS-XHTTP-CDN"
 
 echo
 echo "========= 节点信息 ========="
 echo "UUID: $UUID"
-echo "CDN 域名: $CFIP"
-echo "SNI: $CFIP"
+echo "CDN 域名: $DOMAIN"
+echo "SNI: $DOMAIN"
 echo "XHTTP_PATH: ${ENCODED_PATH}"
 echo "$VLESS_LINK"
 echo "============================"
