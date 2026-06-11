@@ -16,9 +16,14 @@ CFIP=${CFIP:-"www.visa.cn"} #优选域名
 CFPORT=${CFPORT:-443} #优选端口
 
 WS_PATH_LEN=${PATH_LEN:-8} #随机路径长度
-WS_PATH_RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$WS_PATH_LEN") #随机路径
 WS_PATH_BASE=${WS_PATH_BASE:-"api/v1"} #固定路径api/v1,api/v2,api/user,api/data#live,stream
-WS_PATH=${WS_PATH:-"/${WS_PATH_BASE}/${WS_PATH_RAND}"}
+
+if [ "$WS_PATH_LEN" -gt 0 ]; then
+  RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$WS_PATH_LEN")
+  WS_PATH="${WS_PATH_BASE}/${RAND}"
+else
+  WS_PATH="${WS_PATH_BASE}"
+fi
 #################################
 # 初始化目录
 #################################
