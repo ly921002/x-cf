@@ -78,7 +78,7 @@ cat > config.json <<EOF
         "security": "tls",
         "tlsSettings": {
           "serverName": "${DOMAIN}",
-          "alpn": ["h3","h2","http/1.1"],
+          "alpn": ["h3","h2"],
           "minVersion": "1.2",    // 为了安全起见，至少要求 TLS1.2
           "certificates": [
             {
