@@ -11,19 +11,14 @@ WORKDIR="$BASE_DIR/x_cf"
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
 XRAY_PORT=${ARGO_PORT:-8001} #隧道端口
 ARGO_AUTH=${ARGO_AUTH:-"ey"} #隧道TOKEN
-ARGO_DOMAIN=${ARGO_DOMAIN:-""} #隧道域名
+ARGO_DOMAIN=${ARGO_DOMAIN:-"domain"} #隧道域名
 CFIP=${CFIP:-"www.visa.cn"} #优选域名
 CFPORT=${CFPORT:-443} #优选端口
 
-XHTTP_PATH_LEN=${XHTTP_PATH_LEN:-8} # 随机路径长度
-XHTTP_PATH_BASE=${XHTTP_PATH_BASE:-"/api/v1"}     # 固定路径
-
-if [ "$XHTTP_PATH_LEN" -gt 0 ]; then
-  RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$XHTTP_PATH_LEN")
-  XHTTP_PATH="${XHTTP_PATH_BASE}/${RAND}"
-else
-  XHTTP_PATH="${XHTTP_PATH_BASE}"
-fi
+WS_PATH_LEN=${PATH_LEN:-8} #随机路径长度
+WS_PATH_RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$WS_PATH_LEN") #随机路径
+WS_PATH_BASE=${WS_PATH_BASE:-"api/v1"} #固定路径api/v1,api/v2,api/user,api/data#live,stream
+WS_PATH=${WS_PATH:-"/${WS_PATH_BASE}/${WS_PATH_RAND}"}
 #################################
 # 初始化目录
 #################################
@@ -87,11 +82,10 @@ cat > config.json <<EOF
         "decryption": "none"
       },
       "streamSettings": {
-        "network": "xhttp",
+        "network": "ws",
         "security": "none",
-        "xhttpSettings": {
-          "path": "${XHTTP_PATH}",
-          "mode": "auto"
+        "wsSettings": {
+          "path": "${WS_PATH}"
         }
       }
     }
@@ -133,6 +127,7 @@ fi
 #################################
 # 启动 Cloudflare Tunnel
 #################################
+DOMAIN=""
 pkill -f "$WORKDIR/cloudflared tunnel" || true
 nohup ./cloudflared tunnel run --token "$ARGO_AUTH" \
   >> run.log 2>&1 &
@@ -149,15 +144,14 @@ fi
 #################################
 # 输出节点信息
 #################################
-ENCODED_PATH=$(printf '%s' "$XHTTP_PATH" | sed 's/\//%2F/g')
-
-VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=xhttp&path=${ENCODED_PATH}&host=${DOMAIN}&sni=${DOMAIN}#VLESS-XHTTP-ARGO"
+ENCODED_PATH=$(printf '%s' "$WS_PATH" | sed 's/\//%2F/g')
+VLESS_LINK="vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&type=ws&host=${DOMAIN}&path=${ENCODED_PATH}&sni=${DOMAIN}#VLESS-ARGO"
 
 echo
 echo "========= 节点信息 ========="
 echo "UUID: $UUID"
 echo "Argo 域名: $DOMAIN"
 echo "SNI: $DOMAIN"
-echo "XHTTP_PATH: ${ENCODED_PATH}"
+echo "WS_PATH: ${ENCODED_PATH}"
 echo "$VLESS_LINK"
 echo "============================"
