@@ -78,7 +78,8 @@ cat > config.json <<EOF
         "security": "tls",
         "tlsSettings": {
           "serverName": "${DOMAIN}",
-          "allowInsecure": false,
+          "alpn": ["h3","h2","http/1.1"],
+          "minVersion": "1.2",    // 为了安全起见，至少要求 TLS1.2
           "certificates": [
             {
               "certificateFile": "/cert/cert.pem",
@@ -87,9 +88,15 @@ cat > config.json <<EOF
           ]
         },
         "xhttpSettings": {
+          "host": "",
           "path": "${XHTTP_PATH}",
           "mode": "auto"
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "metadataOnly": false
       }
     }
   ],
