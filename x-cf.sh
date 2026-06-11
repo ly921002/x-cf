@@ -90,15 +90,28 @@ cat > config.json <<EOF
         "network": "xhttp",
         "security": "none",
         "xhttpSettings": {
+          "host": "", 
           "path": "${XHTTP_PATH}",
           "mode": "auto"
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "metadataOnly": false
       }
     }
   ],
   "outbounds": [
-    { "protocol": "freedom" }
-  ]
+        {
+            "protocol": "freedom",
+            "tag": "direct"
+        },
+        {
+            "protocol": "blackhole",
+            "tag": "block"
+        }
+    ]
 }
 EOF
 
