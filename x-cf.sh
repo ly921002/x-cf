@@ -15,11 +15,15 @@ UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
 
 XRAY_PORT=${XRAY_PORT:-8443}
 
-PATH_LENGTH=${PATH_LENGTH:-8}
-RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$PATH_LENGTH")
+XHTTP_PATH_LEN=${XHTTP_PATH_LEN:-8} # 随机路径长度
+XHTTP_PATH_BASE=${XHTTP_PATH_BASE:-"/api/v1"}     # 固定路径
 
-BASE=${BASE:-"api/v1"}
-XHTTP_PATH=${XHTTP_PATH:-"/${BASE}/${RAND}"}
+if [ "$XHTTP_PATH_LEN" -gt 0 ]; then
+  RAND=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$XHTTP_PATH_LEN")
+  XHTTP_PATH="${XHTTP_PATH_BASE}/${RAND}"
+else
+  XHTTP_PATH="${XHTTP_PATH_BASE}"
+fi
 
 #################################
 # 初始化目录
