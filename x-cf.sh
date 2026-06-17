@@ -57,6 +57,18 @@ if [ ! -f xray ]; then
   chmod +x xray
   rm -f xray.zip
 fi
+#################################
+# ✅ 证书检测
+#################################
+if [ ! -f /cert/cert.pem ]; then
+  echo "[!] 证书缺失: /cert/cert.pem"
+  exit 1
+fi
+
+if [ ! -f /cert/key.key ]; then
+  echo "[!] 证书密钥缺失: /cert/key.key"
+  exit 1
+fi
 
 #################################
 # 生成 Xray 配置
