@@ -2,17 +2,23 @@
 set -e
 
 #################################
-# 基础路径
+# 基础路径与环境
 #################################
 BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKDIR="$BASE_DIR/x_cf"
 
 ### ====== 基础变量 ======
 UUID=${UUID:-$(cat /proc/sys/kernel/random/uuid)}
-PORT=${PORT:-8001}  # 本地 Xray 监听端口
-DOMAIN=${DOMAIN:-"domain"}  # CDN 域名
+PORT=${PORT:-8001}                 # 本地 Xray 监听端口
+DOMAIN=${DOMAIN:-"domain"}         # CDN 域名
+XRAY_FORCE_UPDATE=${XRAY_FORCE_UPDATE:-false} # 统一强制更新变量名
 
-XHTTP_PATH_LEN=${XHTTP_PATH_LEN:-8} # 随机路径长度
+# 证书路径变量化，方便跨环境迁移
+CERT_FILE=${CERT_FILE:-"/cert/cert.pem"}
+KEY_FILE=${KEY_FILE:-"/cert/key.key"}
+
+# 路径变量
+XHTTP_PATH_LEN=${XHTTP_PATH_LEN:-8}           # 随机路径长度
 XHTTP_PATH_BASE=${XHTTP_PATH_BASE:-"/api/v1"} # 固定路径
 
 if [ "$XHTTP_PATH_LEN" -gt 0 ]; then
@@ -23,56 +29,55 @@ else
 fi
 
 #################################
-# 初始化目录
+# 初始化与架构判断
 #################################
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
-#################################
-# 架构判断
-#################################
 ARCH=$(uname -m)
-echo "识别架构: $ARCH"
+echo "[*] 识别系统架构: $ARCH"
 case "$ARCH" in
   x86_64)
-    XRAY_ARCH="64"
+    XRAY_ARCH="64" # 注意: 官方通常为 amd64，此处依你的镜像源保持 64
     ;;
   aarch64|arm64)
     XRAY_ARCH="arm64-v8a"
     ;;
   *)
-    echo "不支持架构: $ARCH"
+    echo "[!] 不支持的架构: $ARCH"
     exit 1
     ;;
 esac
 
 #################################
-# 下载 Xray
+# 证书检测
 #################################
-if [ ! -f xray ]; then
-  echo "[+] 下载 Xray"
-  echo "下载地址: https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
-  curl -L -o xray.zip "https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
-  unzip -q xray.zip xray
-  chmod +x xray
-  rm -f xray.zip
-fi
-#################################
-# ✅ 证书检测
-#################################
-if [ ! -f /cert/cert.pem ]; then
-  echo "[!] 证书缺失: /cert/cert.pem"
+if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
+  echo "[!] 证书或私钥缺失，请检查路径:"
+  echo "    Cert: $CERT_FILE"
+  echo "    Key:  $KEY_FILE"
   exit 1
 fi
 
-if [ ! -f /cert/key.key ]; then
-  echo "[!] 证书密钥缺失: /cert/key.key"
-  exit 1
+#################################
+# 下载 Xray
+#################################
+if [ ! -f xray ] || [ "$XRAY_FORCE_UPDATE" = "true" ]; then
+  echo "[+] 开始下载/更新 Xray (架构: ${XRAY_ARCH})"
+  DOWNLOAD_URL="https://download.lycn.qzz.io/xray-linux-${XRAY_ARCH}"
+  echo "    地址: $DOWNLOAD_URL"
+  
+  # 增加 -f 避免下载 404 页面，增加 -o 强制覆盖旧文件
+  curl -fL -o xray.zip "$DOWNLOAD_URL"
+  unzip -q -o xray.zip xray
+  chmod +x xray
+  rm -f xray.zip
 fi
 
 #################################
 # 生成 Xray 配置
 #################################
+echo "[+] 生成 Xray 配置文件"
 cat > config.json <<EOF
 {
   "log": { "loglevel": "warning" },
@@ -91,11 +96,11 @@ cat > config.json <<EOF
         "tlsSettings": {
           "serverName": "${DOMAIN}",
           "alpn": ["h3","h2"],
-          "minVersion": "1.2",    // 为了安全起见，至少要求 TLS1.2
+          "minVersion": "1.3",
           "certificates": [
             {
-              "certificateFile": "/cert/cert.pem",
-              "keyFile": "/cert/key.key"
+              "certificateFile": "${CERT_FILE}",
+              "keyFile": "${KEY_FILE}"
             }
           ]
         },
@@ -106,38 +111,45 @@ cat > config.json <<EOF
         }
       },
       "sniffing": {
-        "enabled": true,
+        "enabled": false,
         "destOverride": ["http", "tls", "quic"],
         "metadataOnly": false
       }
     }
   ],
   "outbounds": [
-        {
-            "protocol": "freedom",
-            "tag": "direct"
-        },
-        {
-            "protocol": "blackhole",
-            "tag": "block"
-        }
-    ]
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block"
+    }
+  ]
 }
 EOF
 
 #################################
 # 启动 Xray
 #################################
-echo "[+] 启动 Xray"
+echo "[+] 启动 Xray 进程"
 pkill -f "$WORKDIR/xray run" || true
+
 nohup ./xray run -c config.json > run.log 2>&1 &
+XRAY_PID=$! # 捕获特定后台进程的 PID
+
 sleep 1
-if ! pgrep xray >/dev/null; then
-  echo "[!] Xray 启动失败"
+
+# 精确检查刚启动的 PID 是否存活
+if ! kill -0 $XRAY_PID 2>/dev/null; then
+  echo "[!] Xray 启动失败！"
   echo "====== 错误日志 ======"
   cat run.log
   exit 1
 fi
+
+echo "[*] Xray 成功运行 (PID: $XRAY_PID)"
 
 #################################
 # 输出节点信息
@@ -150,7 +162,8 @@ echo
 echo "========= 节点信息 ========="
 echo "UUID: $UUID"
 echo "CDN 域名: $DOMAIN"
-echo "SNI: $DOMAIN"
-echo "XHTTP_PATH: ${ENCODED_PATH}"
+echo "XHTTP_PATH: ${XHTTP_PATH}"
+echo "----------------------------"
+echo "VLESS 分享链接:"
 echo "$VLESS_LINK"
 echo "============================"
