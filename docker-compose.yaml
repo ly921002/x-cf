@@ -3,15 +3,15 @@ version: "3.8"
 services:
   app:
     image: ghcr.io/ly921002/x-cf:latest
-    container_name: x-cf
+    container_name: x-cf-argo
     restart: unless-stopped
-    network_mode: host     # 使用宿主机网络
+    network_mode: host
     environment:
-      UUID: xxxx
-      ARGO_AUTH: ey
-      ARGO_DOMAIN: domain
+      UUID: ""
+      ARGO_AUTH: "ey..."
+      ARGO_DOMAIN: "example.trycloudflare.com"
       ARGO_PORT: 8001
-      XHTTP_PATH_BASE: /api/v1
-      XHTTP_PATH_LEN: 8  #随机路径长度
-      CFIP: www.visa.cn #优选域名
-      CFPORT: 443 #优选端口
+      XHTTP_PATH_BASE: "/api/v1"
+      XHTTP_PATH_LEN: 8
+      CFIP: "www.visa.cn"
+      CFPORT: 443
