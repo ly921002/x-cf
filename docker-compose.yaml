@@ -2,14 +2,19 @@ version: "3.8"
 
 services:
   app:
-    image: ghcr.io/ly921002/x-cf:latest
-    container_name: x-cf
+    image: ghcr.io/ly921002/x-cf:cdn
+    container_name: x-cf-cdn
     restart: unless-stopped
-    network_mode: host     # 使用宿主机网络
+    network_mode: host
     environment:
-      UUID: xxxx
+      UUID: ""
+      DOMAIN: "example.com"
       XRAY_PORT: 8001
-      XHTTP_PATH_BASE: /api/v1
-      XHTTP_PATH_LEN: 8  #随机路径长度
-      CFIP: www.visa.cn #优选域名
-      CFPORT: 443 #优选端口
+      CERT_FILE: "/cert/cert.pem"
+      KEY_FILE: "/cert/key.key"
+      CFIP: "www.visa.cn"
+      CFPORT: 443
+      XHTTP_PATH_BASE: "/api/v1"
+      XHTTP_PATH_LEN: 8
+    volumes:
+      - ./cert:/cert:ro
