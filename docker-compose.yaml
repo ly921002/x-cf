@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   app:
-    image: ghcr.io/ly921002/x-cf:latest
+    image: ghcr.io/ly921002/x-cf:argo
     container_name: x-cf-argo
     restart: unless-stopped
     network_mode: host
