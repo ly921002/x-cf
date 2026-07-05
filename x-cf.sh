@@ -128,7 +128,6 @@ pick_server_name() {
     cat server_name.txt
   else
     value="$(printf '%s\n' \
-      www.microsoft.com \
       www.apple.com \
       www.cloudflare.com \
       www.amazon.com \
