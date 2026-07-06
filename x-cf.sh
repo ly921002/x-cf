@@ -83,7 +83,9 @@ download_xray() {
     rm -f xray.zip
   fi
 }
-
+show_xray_version() {
+  XRAY_VERSION="$(./xray version | head -n1)"
+}
 [ -n "$DOMAIN" ] || die "DOMAIN is required"
 [ -f "$CERT_FILE" ] || die "certificate file not found: $CERT_FILE"
 [ -f "$KEY_FILE" ] || die "private key file not found: $KEY_FILE"
@@ -96,6 +98,7 @@ XHTTP_PATH="$(load_or_create_path)"
 
 detect_arch
 download_xray
+show_xray_version
 
 cat > config.json <<EOF
 {
@@ -148,6 +151,7 @@ VLESS_LINK="vless://${UUID}@${CONNECT_HOST}:${CONNECT_PORT}?encryption=none&secu
 
 echo
 echo "========= Node Info ========="
+echo "Xray   : $XRAY_VERSION"
 echo "Mode   : CDN"
 echo "UUID   : $UUID"
 echo "Domain : $DOMAIN"
