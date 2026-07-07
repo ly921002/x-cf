@@ -83,6 +83,9 @@ download_xray() {
     rm -f xray.zip
   fi
 }
+show_xray_version() {
+  XRAY_VERSION="$(./xray version | head -n1)"
+}
 xray_vlessenc() {
     if [ -s enc_dekey.txt ] && [ -s enc_enkey.txt ]; then
         DEKEY=$(cat enc_dekey.txt)
@@ -103,12 +106,6 @@ xray_vlessenc() {
 [ -n "$DOMAIN" ] || die "DOMAIN is required"
 [ -f "$CERT_FILE" ] || die "certificate file not found: $CERT_FILE"
 [ -f "$KEY_FILE" ] || die "private key file not found: $KEY_FILE"
-
-xray_vlessenc() {
-  ./xray vlessenc > enc.json
-  DEKEY=$(awk -F'"' '/decryption/ {print $4}' enc.json | tail -1)
-  ENKEY=$(awk -F'"' '/encryption/ {print $4}' enc.json | tail -1)
-}
 
 CONNECT_HOST="${CFIP:-$DOMAIN}"
 CONNECT_PORT="${CFPORT:-$PORT}"
