@@ -83,12 +83,32 @@ download_xray() {
     rm -f xray.zip
   fi
 }
-show_xray_version() {
-  XRAY_VERSION="$(./xray version | head -n1)"
+xray_vlessenc() {
+    if [ -s enc_dekey.txt ] && [ -s enc_enkey.txt ]; then
+        DEKEY=$(cat enc_dekey.txt)
+        ENKEY=$(cat enc_enkey.txt)
+        return
+    fi
+
+    ./xray vlessenc > enc.json
+
+    DEKEY=$(awk -F'"' '/decryption/ {print $4}' enc.json | tail -1)
+    ENKEY=$(awk -F'"' '/encryption/ {print $4}' enc.json | tail -1)
+
+    echo "$DEKEY" > enc_dekey.txt
+    echo "$ENKEY" > enc_enkey.txt
+
+    rm -f enc.json
 }
 [ -n "$DOMAIN" ] || die "DOMAIN is required"
 [ -f "$CERT_FILE" ] || die "certificate file not found: $CERT_FILE"
 [ -f "$KEY_FILE" ] || die "private key file not found: $KEY_FILE"
+
+xray_vlessenc() {
+  ./xray vlessenc > enc.json
+  DEKEY=$(awk -F'"' '/decryption/ {print $4}' enc.json | tail -1)
+  ENKEY=$(awk -F'"' '/encryption/ {print $4}' enc.json | tail -1)
+}
 
 CONNECT_HOST="${CFIP:-$DOMAIN}"
 CONNECT_PORT="${CFPORT:-$PORT}"
@@ -99,6 +119,7 @@ XHTTP_PATH="$(load_or_create_path)"
 detect_arch
 download_xray
 show_xray_version
+xray_vlessenc
 
 cat > config.json <<EOF
 {
@@ -109,8 +130,13 @@ cat > config.json <<EOF
       "port": ${PORT},
       "protocol": "vless",
       "settings": {
-        "clients": [{ "id": "${UUID}" }],
-        "decryption": "none"
+        "clients": [
+          {
+            "id": "${UUID}",
+            "flow": "xtls-rprx-vision"
+          }
+        ],
+        "decryption": "${DEKEY}"
       },
       "streamSettings": {
         "network": "xhttp",
@@ -147,7 +173,7 @@ cat > config.json <<EOF
 EOF
 
 ENCODED_PATH="$(printf '%s' "$XHTTP_PATH" | sed 's/\//%2F/g')"
-VLESS_LINK="vless://${UUID}@${CONNECT_HOST}:${CONNECT_PORT}?encryption=none&security=tls&type=xhttp&path=${ENCODED_PATH}&host=${DOMAIN}&sni=${DOMAIN}#VLESS-XHTTP-CDN"
+VLESS_LINK="vless://${UUID}@${CONNECT_HOST}:${CONNECT_PORT}?encryption=${ENKEY}&security=tls&type=xhttp&flow=xtls-rprx-vision&path=${ENCODED_PATH}&host=${DOMAIN}&sni=${DOMAIN}#VLESS-XHTTP-CDN"
 
 echo
 echo "========= Node Info ========="
@@ -159,6 +185,7 @@ echo "Port   : $PORT"
 echo "Connect: ${CONNECT_HOST}:${CONNECT_PORT}"
 echo "Path   : $XHTTP_PATH"
 echo "Link   : $VLESS_LINK"
+echo "Encryption : $ENKEY"
 echo "============================="
 echo
 echo "[+] Starting Xray"
