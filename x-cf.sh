@@ -83,7 +83,26 @@ download_xray() {
     rm -f xray.zip
   fi
 }
+show_xray_version() {
+  XRAY_VERSION="$(./xray version | head -n1)"
+}
+xray_vlessenc() {
+    if [ -s enc_dekey.txt ] && [ -s enc_enkey.txt ]; then
+        DEKEY=$(cat enc_dekey.txt)
+        ENKEY=$(cat enc_enkey.txt)
+        return
+    fi
 
+    ./xray vlessenc > enc.json
+
+    DEKEY=$(awk -F'"' '/decryption/ {print $4}' enc.json | tail -1)
+    ENKEY=$(awk -F'"' '/encryption/ {print $4}' enc.json | tail -1)
+
+    echo "$DEKEY" > enc_dekey.txt
+    echo "$ENKEY" > enc_enkey.txt
+
+    rm -f enc.json
+}
 load_or_create_reality_keys() {
   if [ -n "$PRIVATE_KEY" ] && [ -n "$PUBLIC_KEY" ]; then
     printf '%s' "$PRIVATE_KEY" > private_key.txt
@@ -128,12 +147,14 @@ pick_server_name() {
     cat server_name.txt
   else
     value="$(printf '%s\n' \
-      www.apple.com \
-      www.cloudflare.com \
-      www.amazon.com \
-      www.oracle.com \
-      www.visa.com \
-      www.nvidia.com | shuf -n 1)"
+      mirrors.us.kernel.org \
+      mirrors.mit.edu \
+      mirrors.ocf.berkeley.edu \
+      archive.linux.duke.edu \
+      linux.yz.yamagata-u.ac.jp \
+      ftp.tsukuba.wide.ad.jp \
+      ftp.rz.tu-bs.de \
+      drmirror.physi.uni-heidelberg.de | shuf -n 1)"
     printf '%s' "$value" > server_name.txt
     echo "$value"
   fi
@@ -158,7 +179,10 @@ XHTTP_PATH="$(load_or_create_path)"
 
 detect_arch
 download_xray
+show_xray_version
+xray_vlessenc
 load_or_create_reality_keys
+
 SHORT_ID="$(load_or_create_short_id)"
 SERVER_NAME="$(pick_server_name)"
 SERVER_IP="$(detect_public_ip)"
@@ -173,8 +197,13 @@ cat > config.json <<EOF
       "port": ${XRAY_PORT},
       "protocol": "vless",
       "settings": {
-        "clients": [{ "id": "${UUID}" }],
-        "decryption": "none"
+        "clients": [
+          {
+            "id": "${UUID}",
+            "flow": "xtls-rprx-vision"
+          }
+        ],
+        "decryption": "${DEKEY}"
       },
       "streamSettings": {
         "network": "xhttp",
@@ -208,10 +237,11 @@ cat > config.json <<EOF
 EOF
 
 ENCODED_PATH="$(printf '%s' "$XHTTP_PATH" | sed 's/\//%2F/g')"
-VLESS_LINK="vless://${UUID}@${SERVER_IP}:${XRAY_PORT}?encryption=none&security=reality&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&sni=${SERVER_NAME}&fp=chrome&type=xhttp&path=${ENCODED_PATH}#VLESS-XHTTP-REALITY"
+VLESS_LINK="vless://${UUID}@${SERVER_IP}:${XRAY_PORT}?encryption=${ENKEY}&security=reality&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&sni=${SERVER_NAME}&fp=chrome&type=xhttp&flow=xtls-rprx-vision&path=${ENCODED_PATH}#VLESS-XHTTP-REALITY"
 
 echo
 echo "========= Node Info ========="
+echo "Xray      : $XRAY_VERSION"
 echo "Mode      : Reality"
 echo "Address   : ${SERVER_IP}:${XRAY_PORT}"
 echo "UUID      : $UUID"
@@ -220,6 +250,7 @@ echo "PublicKey : $PUBLIC_KEY"
 echo "ShortID   : $SHORT_ID"
 echo "Path      : $XHTTP_PATH"
 echo "Link      : $VLESS_LINK"
+echo "Encryption: $ENKEY"
 echo "============================="
 echo
 echo "[+] Starting Xray"
