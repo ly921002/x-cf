@@ -10,11 +10,13 @@ XHTTP_PATH="${XHTTP_PATH:-}"
 XHTTP_PATH_BASE="${XHTTP_PATH_BASE:-${BASE:-/api/v1}}"
 XHTTP_PATH_LEN="${XHTTP_PATH_LEN:-${PATH_LENGTH:-8}}"
 SERVER_NAME="${SERVER_NAME:-}"
+SERVER_REGION="${SERVER_REGION:-us}"
 SERVER_IP="${SERVER_IP:-}"
 PRIVATE_KEY="${PRIVATE_KEY:-}"
 PUBLIC_KEY="${PUBLIC_KEY:-}"
 SHORT_ID="${SHORT_ID:-}"
 XRAY_FORCE_UPDATE="${XRAY_FORCE_UPDATE:-false}"
+
 
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
@@ -117,8 +119,8 @@ load_or_create_reality_keys() {
   fi
 
   key_output="$(./xray x25519 2>/dev/null)"
-  PRIVATE_KEY="$(echo "$key_output" | awk -F': ' '/PrivateKey/ {print $2; exit}')"
-  PUBLIC_KEY="$(echo "$key_output" | awk -F': ' '/Password/ {print $2; exit}')"
+  PRIVATE_KEY="$(echo "$key_output" | awk -F': ' '/Private/ {print $2; exit}')"
+  PUBLIC_KEY="$(echo "$key_output" | awk -F': ' '/Public/ {print $2; exit}')"
 
   [ -n "$PRIVATE_KEY" ] || die "failed to parse Reality private key"
   [ -n "$PUBLIC_KEY" ] || die "failed to parse Reality public key"
@@ -143,21 +145,40 @@ load_or_create_short_id() {
 pick_server_name() {
   if [ -n "$SERVER_NAME" ]; then
     echo "$SERVER_NAME"
-  elif [ -s server_name.txt ]; then
-    cat server_name.txt
-  else
-    value="$(printf '%s\n' \
-      mirrors.us.kernel.org \
-      mirrors.mit.edu \
-      mirrors.ocf.berkeley.edu \
-      archive.linux.duke.edu \
-      linux.yz.yamagata-u.ac.jp \
-      ftp.tsukuba.wide.ad.jp \
-      ftp.rz.tu-bs.de \
-      drmirror.physi.uni-heidelberg.de | shuf -n 1)"
-    printf '%s' "$value" > server_name.txt
-    echo "$value"
+    return
   fi
+
+  if [ -s server_name.txt ]; then
+    cat server_name.txt
+    return
+  fi
+
+  if [ -n "$SERVERS" ]; then
+    value="$(printf '%s\n' "$SERVERS" | shuf -n1)"
+  else
+    case "$SERVER_REGION" in
+      us)
+        value="$(printf '%s\n' \
+          mirrors.ocf.berkeley.edu \
+          mirrors.us.kernel.org \
+          archive.linux.duke.edu \
+          mirrors.mit.edu | shuf -n1)"
+        ;;
+      jp)
+        value="$(printf '%s\n' \
+          ftp.tsukuba.wide.ad.jp \
+          linux.yz.yamagata-u.ac.jp | shuf -n1)"
+        ;;
+      de)
+        value="$(printf '%s\n' \
+          ftp.rz.tu-bs.de \
+          drmirror.physi.uni-heidelberg.de | shuf -n1)"
+        ;;
+    esac
+  fi
+
+  printf '%s' "$value" > server_name.txt
+  echo "$value"
 }
 
 detect_public_ip() {
