@@ -15,6 +15,7 @@ XHTTP_PATH="${XHTTP_PATH:-}"
 XHTTP_PATH_BASE="${XHTTP_PATH_BASE:-/api/v1}"
 XHTTP_PATH_LEN="${XHTTP_PATH_LEN:-8}"
 XRAY_FORCE_UPDATE="${XRAY_FORCE_UPDATE:-false}"
+VLESS_NAME="${VLESS_NAME:-VLESS-XHTTP-CDN}"
 
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
@@ -170,7 +171,7 @@ cat > config.json <<EOF
 EOF
 
 ENCODED_PATH="$(printf '%s' "$XHTTP_PATH" | sed 's/\//%2F/g')"
-VLESS_LINK="vless://${UUID}@${CONNECT_HOST}:${CONNECT_PORT}?encryption=${ENKEY}&security=tls&type=xhttp&flow=xtls-rprx-vision&path=${ENCODED_PATH}&host=${DOMAIN}&sni=${DOMAIN}#VLESS-XHTTP-CDN"
+VLESS_LINK="vless://${UUID}@${CONNECT_HOST}:${CONNECT_PORT}?encryption=${ENKEY}&security=tls&type=xhttp&flow=xtls-rprx-vision&path=${ENCODED_PATH}&host=${DOMAIN}&sni=${DOMAIN}#${VLESS_NAME}"
 
 echo
 echo "========= Node Info ========="
