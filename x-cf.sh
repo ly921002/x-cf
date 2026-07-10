@@ -16,7 +16,7 @@ PRIVATE_KEY="${PRIVATE_KEY:-}"
 PUBLIC_KEY="${PUBLIC_KEY:-}"
 SHORT_ID="${SHORT_ID:-}"
 XRAY_FORCE_UPDATE="${XRAY_FORCE_UPDATE:-false}"
-
+VLESS_NAME="${VLESS_NAME:-VLESS-XHTTP-REALITY}"
 
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
@@ -258,7 +258,7 @@ cat > config.json <<EOF
 EOF
 
 ENCODED_PATH="$(printf '%s' "$XHTTP_PATH" | sed 's/\//%2F/g')"
-VLESS_LINK="vless://${UUID}@${SERVER_IP}:${XRAY_PORT}?encryption=${ENKEY}&security=reality&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&sni=${SERVER_NAME}&fp=chrome&type=xhttp&flow=xtls-rprx-vision&path=${ENCODED_PATH}#VLESS-XHTTP-REALITY"
+VLESS_LINK="vless://${UUID}@${SERVER_IP}:${XRAY_PORT}?encryption=${ENKEY}&security=reality&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&sni=${SERVER_NAME}&fp=chrome&type=xhttp&flow=xtls-rprx-vision&path=${ENCODED_PATH}#${VLESS_NAME}"
 
 echo
 echo "========= Node Info ========="
