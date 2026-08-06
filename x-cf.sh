@@ -16,7 +16,7 @@ XHTTP_PATH_BASE="${XHTTP_PATH_BASE:-/api/v1}"
 XHTTP_PATH_LEN="${XHTTP_PATH_LEN:-8}"
 XRAY_FORCE_UPDATE="${XRAY_FORCE_UPDATE:-false}"
 VLESS_NAME="${VLESS_NAME:-VLESS-XHTTP-CDN}"
-PIN_CERT="${PIN_CERT:-}"
+
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
@@ -108,17 +108,6 @@ xray_vlessenc() {
 [ -f "$CERT_FILE" ] || die "certificate file not found: $CERT_FILE"
 [ -f "$KEY_FILE" ] || die "private key file not found: $KEY_FILE"
 
-generate_pin() {
-    PIN_CERT=$(openssl s_client \
-    -connect "${CFIP}:${CFPORT}" \
-    -servername "${DOMAIN}" </dev/null 2>/dev/null \
-    | openssl x509 -pubkey -noout \
-    | openssl pkey -pubin -outform der \
-    | openssl dgst -sha256  \
-    | awk '{print $2}')
-
-}
-
 
 CONNECT_HOST="${CFIP:-$DOMAIN}"
 CONNECT_PORT="${CFPORT:-$PORT}"
@@ -130,7 +119,7 @@ detect_arch
 download_xray
 show_xray_version
 xray_vlessenc
-generate_pin
+
 cat > config.json <<EOF
 {
   "log": { "loglevel": "warning" },
@@ -192,7 +181,6 @@ echo "Mode   : CDN"
 echo "UUID   : $UUID"
 echo "Domain : $DOMAIN"
 echo "Port   : $PORT"
-echo "PinSHA256 : $PIN_CERT"
 echo "Connect: ${CONNECT_HOST}:${CONNECT_PORT}"
 echo "Path   : $XHTTP_PATH"
 echo "Link   : $VLESS_LINK"
