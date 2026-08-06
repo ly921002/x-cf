@@ -8,7 +8,8 @@ RUN apk add --no-cache \
     unzip \
     iproute2 \
     libc6-compat \
-    tzdata
+    tzdata \
+    openssl
 
 COPY x-cf.sh .
 RUN chmod +x x-cf.sh
