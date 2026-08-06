@@ -108,12 +108,25 @@ xray_vlessenc() {
 [ -f "$CERT_FILE" ] || die "certificate file not found: $CERT_FILE"
 [ -f "$KEY_FILE" ] || die "private key file not found: $KEY_FILE"
 
+generate_pin() {
+    PIN_CERT=$(openssl s_client \
+    -connect "${CONNECT_HOST}:${CONNECT_PORT}" \
+    -servername "${DOMAIN}" </dev/null 2>/dev/null \
+    | openssl x509 -pubkey -noout \
+    | openssl pkey -pubin -outform der \
+    | openssl dgst -sha256 -binary \
+    | base64)
+
+    echo "$PIN_CERT" > pin.txt
+}
+
+
 CONNECT_HOST="${CFIP:-$DOMAIN}"
 CONNECT_PORT="${CFPORT:-$PORT}"
 
 UUID="$(load_or_create_uuid)"
 XHTTP_PATH="$(load_or_create_path)"
-
+generate_pin
 detect_arch
 download_xray
 show_xray_version
@@ -180,6 +193,7 @@ echo "Mode   : CDN"
 echo "UUID   : $UUID"
 echo "Domain : $DOMAIN"
 echo "Port   : $PORT"
+echo "PinSHA256 : $PIN_CERT"
 echo "Connect: ${CONNECT_HOST}:${CONNECT_PORT}"
 echo "Path   : $XHTTP_PATH"
 echo "Link   : $VLESS_LINK"
