@@ -109,10 +109,6 @@ xray_vlessenc() {
 [ -f "$KEY_FILE" ] || die "private key file not found: $KEY_FILE"
 
 generate_pin() {
-    if [ -n "$PIN_CERT" ]; then
-        return
-    fi
-
     PIN_CERT=$(openssl s_client \
     -connect "${DOMAIN}:${PORT}" \
     -servername "${DOMAIN}" </dev/null 2>/dev/null \
