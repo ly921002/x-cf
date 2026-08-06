@@ -114,7 +114,7 @@ generate_pin() {
     fi
 
     PIN_CERT=$(openssl s_client \
-    -connect "${DOMAIN}:443" \
+    -connect "${DOMAIN}:${PORT}" \
     -servername "${DOMAIN}" </dev/null 2>/dev/null \
     | openssl x509 -pubkey -noout \
     | openssl pkey -pubin -outform der \
