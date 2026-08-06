@@ -16,7 +16,7 @@ XHTTP_PATH_BASE="${XHTTP_PATH_BASE:-/api/v1}"
 XHTTP_PATH_LEN="${XHTTP_PATH_LEN:-8}"
 XRAY_FORCE_UPDATE="${XRAY_FORCE_UPDATE:-false}"
 VLESS_NAME="${VLESS_NAME:-VLESS-XHTTP-CDN}"
-
+PIN_CERT="${PIN_CERT:-}"
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
@@ -109,6 +109,10 @@ xray_vlessenc() {
 [ -f "$KEY_FILE" ] || die "private key file not found: $KEY_FILE"
 
 generate_pin() {
+    if [ -n "$PIN_CERT" ]; then
+        return
+    fi
+
     PIN_CERT=$(openssl s_client \
     -connect "${DOMAIN}:443" \
     -servername "${DOMAIN}" </dev/null 2>/dev/null \
@@ -117,7 +121,6 @@ generate_pin() {
     | openssl dgst -sha256 -binary \
     | base64)
 
-    echo "$PIN_CERT" > pin.txt
 }
 
 
@@ -126,12 +129,12 @@ CONNECT_PORT="${CFPORT:-$PORT}"
 
 UUID="$(load_or_create_uuid)"
 XHTTP_PATH="$(load_or_create_path)"
-generate_pin
+
 detect_arch
 download_xray
 show_xray_version
 xray_vlessenc
-
+generate_pin
 cat > config.json <<EOF
 {
   "log": { "loglevel": "warning" },
